@@ -5,8 +5,9 @@ import sys
 
 HOST = ''
 PORT = 50007
-
-
+hostname = socket.gethostname()
+local_ip = socket.gethostbyname(hostname)
+print(local_ip)
 def main():
     print("server")
     try:
@@ -19,6 +20,7 @@ def main():
                 continue
             # socket is created successfully
             try:
+                print("sa is: " + str(sa))
                 sock.bind(sa)
                 sock.listen(1)
             except OSError as msg:
@@ -37,8 +39,10 @@ def main():
             while True:
                 data = conn.recv(1024)
                 if not data:
+                    print("breaking!")
                     break
-                conn.send(data)
+                #conn.send(data)
+                print(repr(data))
         sock = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM, proto=0, fileno=None)
         print(HOST, PORT)
         # print(HOST)

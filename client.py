@@ -4,24 +4,32 @@
 import socket
 import sys
 
+HOST = '127.0.0.1'
+PORT = 50007
 
 def main():
     try:
-        sock = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM, proto=0, fileno=None)
-        print("success")
-        port = 80
-
-        try:
-            host_ip = socket.gethostbyname('www.google.com')
-        except socket.gaierror:
-            # this means could not resolve the host
-            print("there was an error resolving the host")
-            sys.exit()
-        # connecting to the server
-        print("host ip is " + str(host_ip))
-        sock.connect((host_ip, port))
-
-        print("the socket has successfully connected to google")
+        for res in socket.getaddrinfo(HOST, PORT, socket.AF_UNSPEC, socket.SOCK_STREAM):
+            af, socktype, proto, canonname, sa = res
+            try:
+                sock = socket.socket(af, socktype, proto)
+            except OSError as msg:
+                sock = None
+                continue
+            try:
+                sock.connect(sa)
+            except OSError as msg:
+                sock.close()
+                sock = None
+                continue
+            break
+        if sock is None:
+            print('could not open socket')
+            sys.exit(1)
+        with sock:
+            sock.sendall(b"hello world")
+            data = sock.recv(1024)
+        print("received", repr(data))
     except socket.error as e:
         print(e)
 
