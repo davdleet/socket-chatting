@@ -2,19 +2,31 @@
 # Press Double ⇧ to search everywhere for classes, files, tool windows, actions, and settings.
 import socket
 import sys
+import urllib.request
+import ssl
+ssl._create_default_https_context = ssl._create_unverified_context
 
-HOST = ''
+external_ip = urllib.request.urlopen('https://ident.me/').read().decode('utf8')
+
+print(external_ip)
+
+
+HOST = None
 PORT = 50007
 hostname = socket.gethostname()
 local_ip = socket.gethostbyname(hostname)
 print(local_ip)
+
 def main():
     print("server")
     try:
+        sock = None
         for res in socket.getaddrinfo(HOST, PORT, socket.AF_UNSPEC, socket.SOCK_STREAM, 0, socket.AI_PASSIVE):
             af, socktype, proto, cannonname, sa = res
+            print(res)
             try:
                 sock = socket.socket(af, socktype, proto)
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             except OSError as msg:
                 sock = None
                 continue
@@ -41,12 +53,13 @@ def main():
                 if not data:
                     print("breaking!")
                     break
-                #conn.send(data)
-                print(repr(data))
-        sock = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM, proto=0, fileno=None)
-        print(HOST, PORT)
+                conn.send(data)
+                parsed = data.decode('ascii')
+                print(parsed)
+        #sock = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM, proto=0, fileno=None)
+        #print(HOST, PORT)
         # print(HOST)
-        sock.bind((HOST, PORT))
+        #sock.bind((HOST, PORT))
     except KeyboardInterrupt as e:
         print("server ended by user")
     except socket.error as e:
