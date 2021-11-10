@@ -5,6 +5,8 @@ import sys
 import urllib.request
 import ssl
 import tkinter
+from tkinter import *
+
 ssl._create_default_https_context = ssl._create_unverified_context
 external_ip = urllib.request.urlopen('https://ident.me/').read().decode('utf8')
 print(external_ip)
@@ -15,8 +17,53 @@ PORT = 50007
 hostname = socket.gethostname()
 local_ip = socket.gethostbyname(hostname)
 window = tkinter.Tk()
-window.geometry("700x700")
-window.mainloop()
+
+def gui():
+    window.geometry("700x700")
+    window['background']='#252229'
+    window.resizable(False, False)
+    window.title("Socket Chatting")
+
+    title = tkinter.Label(window, bg='#252229', font=("Lucida Grande", 25), text="Start a chatting Server", relief="solid")
+    title.pack(pady=20)
+
+    label1 = Label(window, bg='#252229', relief="solid")
+    label1.pack(fill="both", padx=20)
+
+    server_ip = Label(label1, bg='#252229', font=("Lucida Grande", 18), text="Server IP: ", relief="solid")
+    server_ip.pack(side="left")
+
+    server_ip_value = Label(label1,bg='#252229', font=("Lucida Grande", 18), text=external_ip, relief="solid")
+    server_ip_value.pack(side="left")
+
+    label2 = Label(window, bg='#252229', relief="solid")
+    label2.pack(fill="both", padx=20)
+
+    port = Label(label2, bg='#252229', font=("Lucida Grande", 18), text="Port: ", relief="solid")
+    port.pack(side="left")
+
+    port_value = Entry(label2, bg='#252229', bd=0, font=("Lucida Grande", 18), text="Password: ")
+    port_value.pack(side="left")
+
+    label3 = Label(window, bg='#252229', relief="solid")
+    label3.pack(fill="both", padx=20)
+
+    password = Label(label3, bg='#252229', font=("Lucida Grande", 18), text="Password: ", relief="solid")
+    password.pack(side="left")
+
+    password_value = Entry(label3, bg='#252229', bd=0, font=("Lucida Grande", 18), text="Password: ")
+    password_value.pack(side="left")
+
+    label4 = Label(window, height= 27, width=100, bg='#252229', relief="solid", text="hello world\nhello")
+    label4.pack(fill="x",side="left",padx=20, pady= 20, anchor="n")
+
+    button1 = tkinter.Button(window, command=None, width=50, height="50", text="press")
+    button1.pack()
+
+
+    window.mainloop()
+
+
 def setup():
     sock = None
     for res in socket.getaddrinfo(HOST, PORT, socket.AF_UNSPEC, socket.SOCK_STREAM, 0, socket.AI_PASSIVE):
@@ -102,5 +149,6 @@ def main():
 
 
 # Press the green button in the gutter to run the script.
-#if __name__ == '__main__':
+if __name__ == '__main__':
 #    main()
+    gui()
