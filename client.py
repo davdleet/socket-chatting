@@ -4,7 +4,7 @@
 import socket
 import sys
 
-HOST = '127.0.0.1'
+HOST = '221.155.194.202'
 PORT = 50007
 
 def main():
@@ -23,6 +23,7 @@ def main():
                 sock.connect(sa)
                 print("after connect")
             except OSError as msg:
+                print(msg)
                 sock.close()
                 sock = None
                 continue
