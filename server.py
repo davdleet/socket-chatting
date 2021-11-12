@@ -22,17 +22,24 @@ window = tkinter.Tk()
 sock = None
 myGui = None
 threads = []
+started = False
+stop_server = False
+listen_thread = None
+
 
 def join_threads():
     for thread in threads:
         print("joining..")
         thread.join()
 
+
 def start_server():
     setup()
     if sock is None:
         print("could not open socket")
-        sys.exit(1)
+        return
+        print("test")
+    print("starting socket...")
     start_socket()
     return
 
@@ -45,8 +52,8 @@ def setup():
         PORT = myGui.port_value.get()
         if PORT == "":
             raise Exception("Enter a valid port number")
-        #if PORT is None:
-            # raise Exception("Enter a valid port number")
+        # if PORT is None:
+        # raise Exception("Enter a valid port number")
         for res in socket.getaddrinfo(HOST, PORT, socket.AF_UNSPEC, socket.SOCK_STREAM, 0, socket.AI_PASSIVE):
             af, socktype, proto, cannonname, sa = res
             try:
@@ -67,7 +74,6 @@ def setup():
         return sock
     except Exception as e:
         messagebox.showerror("Error!", e)
-        join_threads()
         sys.exit(1)
 
 
@@ -77,7 +83,10 @@ def add_to_list(client_info):
 
 def start_socket():
     print("server open!")
-
+    # messagebox.showinfo("Success", "Server was successfully started")
+    global started
+    global stop_server
+    started = True
     conn, addr = sock.accept()
     with conn:
         add_to_list(addr)
@@ -90,6 +99,25 @@ def start_socket():
                 print("breaking!")
                 break
             conn.send(b"success")
+
+
+def get_new_thread():
+    t = Thread(target=start_server)
+    threads.append(t)
+    return t
+
+
+def start_threads():
+    global threads
+    global started
+    global listen_thread
+    if started:
+        messagebox.showerror("error", "Server is already running!")
+        return
+    listen_thread = get_new_thread()
+    listen_thread.start()
+
+
 
 class Gui:
     window.geometry("700x700")
@@ -159,7 +187,7 @@ class Gui:
 
     t = Thread(target=start_server)
     threads.append(t)
-    start_button = tkinter.Button(label6, font=("Lucida Grande", 18), command=t.start,
+    start_button = tkinter.Button(label6, font=("Lucida Grande", 18), command=start_threads,
                                   width=3, height=1, text="start")
     start_button.pack(side="right", ipadx=3, ipady=3)
 
@@ -169,11 +197,13 @@ class Gui:
     def start(self):
         window.mainloop()
 
+
 myGui = Gui()
 
 
 def add_to_list(client_info):
     myGui.list.insert(tkinter.END, str(client_info))
+
 
 def main():
     Gui.start(myGui)
