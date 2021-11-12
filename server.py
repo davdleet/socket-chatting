@@ -15,7 +15,7 @@ external_ip = urllib.request.urlopen('https://ident.me/').read().decode('utf8')
 # print(external_ip)
 
 HOST = None
-PORT = 50007
+PORT = None
 hostname = socket.gethostname()
 local_ip = socket.gethostbyname(hostname)
 window = tkinter.Tk()
@@ -25,6 +25,7 @@ threads = []
 started = False
 stop_server = False
 listen_thread = None
+clients = []
 
 
 def join_threads():
@@ -87,18 +88,43 @@ def start_socket():
     global started
     global stop_server
     started = True
-    conn, addr = sock.accept()
-    with conn:
-        add_to_list(addr)
+    while True:
+        conn, addr = sock.accept()
         print('connected by', addr)
-        while True:
-            data = conn.recv(1024)
-            parsed = data.decode('ascii')
-            print(parsed)
-            if not data:
-                print("breaking!")
-                break
-            conn.send(b"success")
+        #list_entry = "{:<30}".format(str(addr[0])) + "{:<20}".format(str(addr[1]))
+        list_entry = f"{addr[0] : <30}{addr[1] : <20}"
+        myGui.list.insert(END, list_entry)
+        clients.append(conn)
+        rcv_thread = Thread(target=receiver, args=(conn, addr))
+        rcv_thread.start()
+    print("server socket closed")
+    # with conn:
+    #     add_to_list(addr)
+    #     print('connected by', addr)
+    #     while True:
+    #         data = conn.recv(1024)
+    #         parsed = data.decode('ascii')
+    #         print(parsed)
+    #         if not data:
+    #             print("breaking!")
+    #             break
+    #         conn.send(b"success")
+
+
+def receiver(conn, addr):
+    connected = True
+    print(f"new connection {addr}")
+    while connected:
+        message = conn.recv(1024)
+
+        broadcast(message)
+
+    print(f"connection lost with {addr}")
+
+
+def broadcast(message):
+    for client in clients:
+        client.send(message)
 
 
 def get_new_thread():
@@ -116,7 +142,6 @@ def start_threads():
         return
     listen_thread = get_new_thread()
     listen_thread.start()
-
 
 
 class Gui:
@@ -162,25 +187,18 @@ class Gui:
     label4.pack(fill="x", padx=20, pady=10)
 
     label5 = Label(window, height=100, bg='#252229', fg='white', relief="solid")
-    label5.pack(fill="x", padx=20)
+    label5.pack(padx=20)
 
-    list = Text(label5, bg='#252229', fg='white', width=89, height=25, wrap=None, relief="solid")
+    list = Text(label5, bg='#252229', fg='white', width=69, height=22, wrap=None, font=("TkFixedFont", 14), relief="solid")
     list.pack(side="left")
 
-    for line in range(100):
-        list.insert(END, "This is line number " + str(line) + "\n")
+    top_row = "{:<30}".format("Address") + "{:<20}".format("Port") + "{:<30}".format("Username") + "\n\n"
+    list.insert(tkinter.END, top_row)
 
     scroll = Scrollbar(label5, orient="vertical", command=list.yview)
     scroll.pack(side='right', fill=Y)
 
     list.config(yscrollcommand=scroll.set)
-
-    list.insert(tkinter.END, "hello")
-
-    # scroll = Scrollbar(label5, orient="vertical")
-    # scroll.pack(side="right")
-
-    # label5.config(xscrollcommand = scroll.set)
 
     label6 = tkinter.Label(window, height=80)
     label6.pack(side="right", padx=20, pady=20, fill="x")

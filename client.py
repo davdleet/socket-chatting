@@ -8,6 +8,10 @@ import tkinter
 HOST = '221.155.194.15'
 PORT = 50007
 
+
+class Gui:
+    None
+
 def main():
     try:
         for res in socket.getaddrinfo(HOST, PORT, socket.AF_UNSPEC, socket.SOCK_STREAM):
