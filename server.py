@@ -20,7 +20,7 @@ hostname = socket.gethostname()
 local_ip = socket.gethostbyname(hostname)
 window = tkinter.Tk()
 sock = None
-myGui = None
+serverGui = None
 threads = []
 started = False
 stop_server = False
@@ -50,7 +50,9 @@ def setup():
     global PORT
     message = "nothing"
     try:
-        PORT = myGui.port_value.get()
+        PORT = serverGui.port_value.get()
+        server_pw = serverGui.password_value.get()
+        print("The server password is: " + str(server_pw))
         if PORT == "":
             raise Exception("Enter a valid port number")
         # if PORT is None:
@@ -93,7 +95,7 @@ def start_socket():
         print('connected by', addr)
         #list_entry = "{:<30}".format(str(addr[0])) + "{:<20}".format(str(addr[1]))
         list_entry = f"{addr[0] : <30}{addr[1] : <20}"
-        myGui.list.insert(END, list_entry)
+        serverGui.list.insert(END, list_entry)
         clients.append(conn)
         rcv_thread = Thread(target=receiver, args=(conn, addr))
         rcv_thread.start()
@@ -148,7 +150,7 @@ class Gui:
     window.geometry("700x700")
     window['background'] = '#252229'
     window.resizable(True, True)
-    window.title("Socket Chatting")
+    window.title("Socket Chatting Server")
 
     title = tkinter.Label(window, bg='#252229', fg='white', font=("Lucida Grande", 25), text="Start a chatting Server",
                           relief="solid")
@@ -216,15 +218,15 @@ class Gui:
         window.mainloop()
 
 
-myGui = Gui()
+serverGui = Gui()
 
 
 def add_to_list(client_info):
-    myGui.list.insert(tkinter.END, str(client_info))
+    serverGui.list.insert(tkinter.END, str(client_info))
 
 
 def main():
-    Gui.start(myGui)
+    Gui.start(serverGui)
 
 
 # Press the green button in the gutter to run the script.

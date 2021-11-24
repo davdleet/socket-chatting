@@ -7,12 +7,32 @@ import tkinter
 
 HOST = '221.155.194.15'
 PORT = 50007
+window = tkinter.Tk()
 
 
-class Gui:
-    None
+class joinGui:
+    window.geometry("")
+    window['background'] = '#252229'
+    window.resizable(True, True)
+    window.title("Socket Chatting Client")
+    title = tkinter.Label(window, bg='#252229', fg='white', font=("Lucida Grande", 25), text="Join a chatting server!",
+                          relief="solid")
+    def start(self):
+        window.mainloop()
 
-def main():
+class chatGui:
+    window.geometry("")
+    window['background'] = '#252229'
+    window.resizable(True, True)
+    window.title("Socket Chatting Client")
+    title = tkinter.Label(window, bg='#252229', fg='white', font=("Lucida Grande", 25), text="Join a chatting server!",
+                          relief="solid")
+
+    def start(self):
+        window.mainloop()
+
+
+def connect_to_server():
     try:
         for res in socket.getaddrinfo(HOST, PORT, socket.AF_UNSPEC, socket.SOCK_STREAM):
             af, socktype, proto, canonname, sa = res
@@ -57,6 +77,11 @@ def main():
         print(e)
     except KeyboardInterrupt as e:
         print("client closed by user")
+
+
+
+def main():
+    None
 
 
 
