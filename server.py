@@ -26,6 +26,7 @@ started = False
 stop_server = False
 listen_thread = None
 clients = []
+server_pw = None
 
 
 def join_threads():
@@ -51,7 +52,7 @@ def setup():
     message = "nothing"
     try:
         PORT = serverGui.port_value.get()
-        server_pw = serverGui.password_value.get()
+        server_pw = str(serverGui.password_value.get())
         print("The server password is: " + str(server_pw))
         if PORT == "":
             raise Exception("Enter a valid port number")
@@ -93,6 +94,20 @@ def start_socket():
     while True:
         conn, addr = sock.accept()
         print('connected by', addr)
+        entered_pw = conn.recv(1024)
+        encoded_entered_pw = entered_pw.decode('ascii')
+        if str(encoded_entered_pw) != str(server_pw):
+            pw_msg = 'wrong password!'
+            encoded_pw_msg = pw_msg.encode('ascii')
+            conn.send(encoded_pw_msg)
+
+            print('wrong password!')
+            sock.close()
+            return
+        else:
+            pw_msg = 'connection successful'
+            encoded_pw_msg = pw_msg.encode('ascii')
+            conn.send(encoded_pw_msg)
         #list_entry = "{:<30}".format(str(addr[0])) + "{:<20}".format(str(addr[1]))
         list_entry = f"{addr[0] : <30}{addr[1] : <20}"
         serverGui.list.insert(END, list_entry)
@@ -118,9 +133,7 @@ def receiver(conn, addr):
     print(f"new connection {addr}")
     while connected:
         message = conn.recv(1024)
-
         broadcast(message)
-
     print(f"connection lost with {addr}")
 
 

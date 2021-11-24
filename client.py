@@ -62,6 +62,18 @@ def connect_to_server():
 
         # after successfully connecting to the server socket
         with sock:
+            pw_verified = False
+            # check password
+            password = str(1235)
+            encoded_password = password.encode('ascii')
+            sock.send(encoded_password)
+            pw_check_msg = sock.recv(1024)
+            decoded_pw_check_msg = pw_check_msg.decode('ascii')
+            if decoded_pw_check_msg == 'connection successful':
+                pw_verified = True
+            if not pw_verified:
+                print(decoded_pw_check_msg)
+                return
             while True:
                 send_msg = str(input("enter something to send: "))
                 send_msg = send_msg.encode('ascii')
@@ -81,7 +93,7 @@ def connect_to_server():
 
 
 def main():
-    None
+    connect_to_server()
 
 
 
