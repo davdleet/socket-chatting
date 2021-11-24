@@ -49,6 +49,7 @@ def start_server():
 def setup():
     global sock
     global PORT
+    global server_pw
     message = "nothing"
     try:
         PORT = serverGui.port_value.get()
@@ -85,55 +86,73 @@ def add_to_list(client_info):
     None
 
 
+def listen_loop():
+    try:
+        while True:
+            # connection from client
+            conn, addr = sock.accept()
+            print('connected by', addr)
+
+            # password verification
+            entered_pw = conn.recv(1024)
+            decoded_entered_pw = entered_pw.decode('ascii')
+            print("decoded pw: " + str(decoded_entered_pw))
+            print("server pw: " + str(server_pw))
+            if str(decoded_entered_pw) != str(server_pw):
+                pw_msg = 'wrong password!'
+                encoded_pw_msg = pw_msg.encode('ascii')
+                conn.send(encoded_pw_msg)
+                print('wrong password!')
+                continue
+            else:
+                pw_msg = 'connection successful'
+                encoded_pw_msg = pw_msg.encode('ascii')
+                conn.send(encoded_pw_msg)
+
+            # get a username from the user
+            username = conn.recv(1024)
+            decoded_username = username.decode('ascii')
+
+            # list_entry = "{:<30}".format(str(addr[0])) + "{:<20}".format(str(addr[1]))
+            list_entry = f"{addr[0] : <40}{addr[1] : <19}{decoded_username : <20}\n"
+            serverGui.list.insert(END, list_entry)
+            clients.append(conn)
+            rcv_thread = Thread(target=receiver, args=(conn, addr, decoded_username))
+            rcv_thread.start()
+    except ConnectionAbortedError as e:
+        print("Server closed by admin")
+
+
 def start_socket():
     print("server open!")
     # messagebox.showinfo("Success", "Server was successfully started")
     global started
     global stop_server
     started = True
-    while True:
-        conn, addr = sock.accept()
-        print('connected by', addr)
-        entered_pw = conn.recv(1024)
-        encoded_entered_pw = entered_pw.decode('ascii')
-        if str(encoded_entered_pw) != str(server_pw):
-            pw_msg = 'wrong password!'
-            encoded_pw_msg = pw_msg.encode('ascii')
-            conn.send(encoded_pw_msg)
-
-            print('wrong password!')
-            sock.close()
-            return
-        else:
-            pw_msg = 'connection successful'
-            encoded_pw_msg = pw_msg.encode('ascii')
-            conn.send(encoded_pw_msg)
-        #list_entry = "{:<30}".format(str(addr[0])) + "{:<20}".format(str(addr[1]))
-        list_entry = f"{addr[0] : <30}{addr[1] : <20}"
-        serverGui.list.insert(END, list_entry)
-        clients.append(conn)
-        rcv_thread = Thread(target=receiver, args=(conn, addr))
-        rcv_thread.start()
+    listener = Thread(target=listen_loop)
+    listener.start()
+    while not stop_server:
+        None
+    broadcast(b"Server Closed")
+    sock.close()
     print("server socket closed")
-    # with conn:
-    #     add_to_list(addr)
-    #     print('connected by', addr)
-    #     while True:
-    #         data = conn.recv(1024)
-    #         parsed = data.decode('ascii')
-    #         print(parsed)
-    #         if not data:
-    #             print("breaking!")
-    #             break
-    #         conn.send(b"success")
+    started = False
+    stop_server = False
 
 
-def receiver(conn, addr):
+def receiver(conn, addr, username):
     connected = True
     print(f"new connection {addr}")
-    while connected:
-        message = conn.recv(1024)
-        broadcast(message)
+    try:
+        while started:
+            message = conn.recv(1024)
+            decoded_message = message.decode('ascii')
+            merged_message = (str(username) + ' : ' + decoded_message)
+            reencoded_message = merged_message.encode('ascii')
+            broadcast(reencoded_message)
+    except (ConnectionResetError, BrokenPipeError) as e:
+        clients.remove(conn)
+        print(username + ' has exited the chat')
     print(f"connection lost with {addr}")
 
 
@@ -157,6 +176,11 @@ def start_threads():
         return
     listen_thread = get_new_thread()
     listen_thread.start()
+
+
+def stop_server_button():
+    global stop_server
+    stop_server = True
 
 
 class Gui:
@@ -204,10 +228,11 @@ class Gui:
     label5 = Label(window, height=100, bg='#252229', fg='white', relief="solid")
     label5.pack(padx=20)
 
-    list = Text(label5, bg='#252229', fg='white', width=69, height=22, wrap=None, font=("TkFixedFont", 14), relief="solid")
+    list = Text(label5, bg='#252229', fg='white', width=69, height=22, wrap=None, font=("TkFixedFont", 14),
+                relief="solid")
     list.pack(side="left")
 
-    top_row = "{:<30}".format("Address") + "{:<20}".format("Port") + "{:<30}".format("Username") + "\n\n"
+    top_row = "{:<43}".format("Address") + "{:<20}".format("Port") + "{:<30}".format("Username") + "\n\n"
     list.insert(tkinter.END, top_row)
 
     scroll = Scrollbar(label5, orient="vertical", command=list.yview)
@@ -218,13 +243,12 @@ class Gui:
     label6 = tkinter.Label(window, height=80)
     label6.pack(side="right", padx=20, pady=20, fill="x")
 
-    t = Thread(target=start_server)
-    threads.append(t)
-    start_button = tkinter.Button(label6, font=("Lucida Grande", 18), command=start_threads,
-                                  width=3, height=1, text="start")
+    start_button = tkinter.Button(label6, font=("Lucida Grande", 18), command=start_threads, width=3, height=1,
+                                  text="start")
     start_button.pack(side="right", ipadx=3, ipady=3)
 
-    stop_button = tkinter.Button(label6, font=("Lucida Grande", 18), command=None, width=3, height=1, text="stop")
+    stop_button = tkinter.Button(label6, font=("Lucida Grande", 18), command=stop_server_button, width=3, height=1,
+                                 text="stop")
     stop_button.pack(side="right", padx=20, ipadx=3, ipady=3)
 
     def start(self):
