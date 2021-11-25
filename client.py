@@ -7,15 +7,33 @@ from tkinter import *
 import threading
 from threading import Thread
 
+
 gui = None
 sock=None
+threads = []
+chatting = False
+errorcode = 0
+
+def chat():
+    try:
+        while True:
+            send_msg = str(input("enter something to send: "))
+            send_msg = send_msg.encode('ascii')
+            sock.send(send_msg)
+            recv_msg = sock.recv(1024)
+            print(recv_msg)
+            if recv_msg == b'Server Closed':
+                print("connection with server was lost")
+                break
+    except Exception as e:
+        print(e)
 
 def connect_to_server():
+    global sock
     HOST = gui.server_ip_value.get()
     PORT = gui.port_value.get()
     password = gui.password_value.get()
     username = gui.username_value.get()
-    global sock
     try:
         for res in socket.getaddrinfo(HOST, PORT, socket.AF_UNSPEC, socket.SOCK_STREAM):
             af, socktype, proto, canonname, sa = res
@@ -31,7 +49,7 @@ def connect_to_server():
                 sock.connect(sa)
             except OSError as msg:
                 print(msg)
-                sock.close()
+                # sock.close()
                 sock = None
                 continue
             except socket.error as e:
@@ -61,8 +79,21 @@ def connect_to_server():
             # send username to server
             encoded_username = username.encode('ascii')
             sock.send(encoded_username)
+
             t = Thread(target=chat)
             t.start()
+            # while True:
+            #     send_msg = str(input("enter something to send: "))
+            #     if send_msg == '/quit':
+            #         print("quit chatting from the server")
+            #         break
+            #     send_msg = send_msg.encode('ascii')
+            #     sock.send(send_msg)
+            #     recv_msg = sock.recv(1024)
+            #     print(recv_msg)
+            #     if recv_msg == b'Server Closed':
+            #         print("connection with server was lost")
+            #         break
             return 0
             # chat(sock)
 
@@ -73,17 +104,9 @@ def connect_to_server():
         print("client closed by user")
 
 
-def chat():
-    global sock
-    while True:
-        send_msg = str(input("enter something to send: "))
-        send_msg = send_msg.encode('ascii')
-        sock.send(send_msg)
-        recv_msg = sock.recv(1024)
-        print(recv_msg)
-        if recv_msg == b'Server Closed':
-            print("connection with server was lost")
-            break
+def open_chat_gui():
+    chatgui = ChatGui()
+    chatgui.start()
 
 
 class JoinGui:
@@ -170,11 +193,6 @@ class JoinGui:
 
     def start(self):
         self.window.mainloop()
-
-
-def open_chat_gui():
-    chatgui = ChatGui()
-    chatgui.start()
 
 
 class ChatGui:
