@@ -15,18 +15,31 @@ chatting = False
 errorcode = 0
 
 def chat():
-    try:
-        while True:
-            send_msg = str(input("enter something to send: "))
-            send_msg = send_msg.encode('ascii')
-            sock.send(send_msg)
-            recv_msg = sock.recv(1024)
-            print(recv_msg)
-            if recv_msg == b'Server Closed':
-                print("connection with server was lost")
-                break
-    except Exception as e:
-        print(e)
+    global sock
+    while True:
+        send_msg = str(input("enter something to send: "))
+        send_msg = send_msg.encode('ascii')
+        print(type(sock))
+        sock.send(send_msg)
+        recv_msg = sock.recv(1024)
+        print(recv_msg)
+        if recv_msg == b'Server Closed':
+            print("connection with server was lost")
+            break
+    # try:
+    #     while True:
+    #         send_msg = str(input("enter something to send: "))
+    #         send_msg = send_msg.encode('ascii')
+    #         sock.send(send_msg)
+    #         recv_msg = sock.recv(1024)
+    #         print(recv_msg)
+    #         if recv_msg == b'Server Closed':
+    #             print("connection with server was lost")
+    #             break
+    # except Exception as e:
+    #     print("error happened in chat")
+    #     print(e)
+    #     sys.exit(1)
 
 def connect_to_server():
     global sock
@@ -41,6 +54,7 @@ def connect_to_server():
             try:
                 sock = socket.socket(af, socktype, proto)
             except OSError as msg:
+                print("oserror1")
                 print(msg)
                 sock = None
                 continue
@@ -48,11 +62,13 @@ def connect_to_server():
             try:
                 sock.connect(sa)
             except OSError as msg:
+                print("oserror2")
                 print(msg)
-                # sock.close()
+                sock.close()
                 sock = None
                 continue
             except socket.error as e:
+                sock = None
                 print("socket")
             # break for loop if connection was made for IPv4 or IPv6
             break
@@ -62,40 +78,39 @@ def connect_to_server():
             return 2
 
         # after successfully connecting to the server socket
-        with sock:
-            pw_verified = False
+        pw_verified = False
 
-            # check password
-            encoded_password = password.encode('ascii')
-            sock.send(encoded_password)
-            pw_check_msg = sock.recv(1024)
-            decoded_pw_check_msg = pw_check_msg.decode('ascii')
-            if decoded_pw_check_msg == 'connection successful':
-                pw_verified = True
-            if not pw_verified:
-                print(decoded_pw_check_msg)
-                return 1
+        # check password
+        encoded_password = password.encode('ascii')
+        sock.send(encoded_password)
+        pw_check_msg = sock.recv(1024)
+        decoded_pw_check_msg = pw_check_msg.decode('ascii')
+        if decoded_pw_check_msg == 'connection successful':
+            pw_verified = True
+        if not pw_verified:
+            print(decoded_pw_check_msg)
+            return 1
 
-            # send username to server
-            encoded_username = username.encode('ascii')
-            sock.send(encoded_username)
+        # send username to server
+        encoded_username = username.encode('ascii')
+        sock.send(encoded_username)
 
-            t = Thread(target=chat)
-            t.start()
-            # while True:
-            #     send_msg = str(input("enter something to send: "))
-            #     if send_msg == '/quit':
-            #         print("quit chatting from the server")
-            #         break
-            #     send_msg = send_msg.encode('ascii')
-            #     sock.send(send_msg)
-            #     recv_msg = sock.recv(1024)
-            #     print(recv_msg)
-            #     if recv_msg == b'Server Closed':
-            #         print("connection with server was lost")
-            #         break
-            return 0
-            # chat(sock)
+        t = Thread(target=chat)
+        t.start()
+        # while True:
+        #     send_msg = str(input("enter something to send: "))
+        #     if send_msg == '/quit':
+        #         print("quit chatting from the server")
+        #         break
+        #     send_msg = send_msg.encode('ascii')
+        #     sock.send(send_msg)
+        #     recv_msg = sock.recv(1024)
+        #     print(recv_msg)
+        #     if recv_msg == b'Server Closed':
+        #         print("connection with server was lost")
+        #         break
+        return 0
+        # chat(sock)
 
     except socket.error as e:
         print("outer error")
