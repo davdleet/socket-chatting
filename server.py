@@ -199,6 +199,7 @@ def recv_file(conn, received):
             # write to the file the bytes we just received
             f.write(bytes_read)
             # update the progress bar
+        f.close()
 
 def get_new_thread():
     t = Thread(target=start_server)
