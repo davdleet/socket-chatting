@@ -41,7 +41,7 @@ def send_file():
     print('Selected: ', filepath)
     filename = filepath.split('/')[-1]
     print('filename: ', filename)
-    filesize = os.paht.getsize(filepath)
+    filesize = os.path.getsize(filepath)
     sock.send(f'[FSN]{filename}{SEPARATOR}{filesize}'.encode())
     progress = tqdm.tqdm(range(filesize), f"Sending {filename}", unit="B", unit_scale=True, unit_divisor=1024)
     with open(filepath, 'rb') as f:
