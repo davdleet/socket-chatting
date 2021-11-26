@@ -153,16 +153,19 @@ def receiver(conn, addr, username):
             message = conn.recv(1024)
             decoded_message = message.decode('ascii')
             received_header = decoded_message[0:5]
-            received_message = decoded_message[5:]
+            received_body = decoded_message[5:]
             if received_header == "[MSG]":
-                merged_message = (str(username) + ' : ' + received_message)
+                merged_message = ('[MSG]' + str(username) + ' : ' + received_body)
                 reencoded_message = merged_message.encode('ascii')
                 broadcast(reencoded_message)
             elif received_header == "[FRQ]":
                 print("user requested file!")
-            elif received_header == "[FSN]":
+
+            elif received_header == "[FUP]":
                 print("user uploaded file!")
-                recv_file(conn, received_message)
+                recv_file(conn, received_body)
+                recv_file_name = received_body.split(SEPARATOR)
+                broadcast_file(recv_file_name)
 
     except (ConnectionResetError, BrokenPipeError) as e:
         clients.remove(conn)
@@ -174,35 +177,26 @@ def broadcast(message):
     for client in clients:
         client.send(message)
 
+def broadcast_file(filename):
+    msg = '[FBC]' + str(filename)
+    encoded_msg = msg.encode('ascii')
+    for client in clients:
+        client.send(encoded_msg)
+
 
 def send_file():
     None
 
 def recv_file(conn, received):
-    # receive the file infos
-    # receive using client socket, not server socket
-    # received = sock.recv(BUFFER_SIZE).decode()
+
     filename, filesize = received.split(SEPARATOR)
-    # remove absolute path if there is
     filename = os.path.basename(filename)
-    # convert to integer
     filesize = int(filesize)
     recv_times = int(filesize / BUFFER_SIZE + 1)
     with open(filename, "wb") as f:
         for i in range(0, recv_times):
-            print('recv')
             bytes_read = conn.recv(BUFFER_SIZE)
-            print(bytes_read)
             f.write(bytes_read)
-
-        # while True:
-        #     print('recv')
-        #     bytes_read = conn.recv(BUFFER_SIZE)
-        #     print(bytes_read)
-        #     if bytes_read == b'-1':
-        #         print('breaking!')
-        #         break
-        #     f.write(bytes_read)
         f.close()
 
 def get_new_thread():

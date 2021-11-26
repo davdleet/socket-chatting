@@ -17,7 +17,7 @@ BUFFER_SIZE = 4096
 SEPARATOR = "<SEPARATOR>"
 
 # executed by other thread
-def make_download_button(text):
+def make_download_button(text, filename):
     gui.chat_log.window_create(tkinter.END, window=tkinter.Button(gui.chat_log, text=text, command=testfunc))
     global makebutton
     makebutton = False
@@ -31,6 +31,10 @@ def show_chat(msg):
     makebutton = True
     gui.chat_log.see("end")
 
+def show_file(filename):
+    global gui
+    gui.make_download_button(filename)
+    gui.chat_log.insert(tkinter.END, '\n')
 
 def testfunc():
     print("hi")
@@ -42,7 +46,7 @@ def send_file():
     filename = filepath.split('/')[-1]
     print('filename: ', filename)
     filesize = os.path.getsize(filepath)
-    sock.send(f'[FSN]{filename}{SEPARATOR}{filesize}'.encode())
+    sock.send(f'[FUP]{filename}{SEPARATOR}{filesize}'.encode())
     progress = tqdm.tqdm(range(filesize), f"Sending {filename}", unit="B", unit_scale=True, unit_divisor=1024)
     send_times = int(filesize/BUFFER_SIZE) + 1
     with open(filepath, 'rb') as f:
@@ -51,14 +55,8 @@ def send_file():
             bytes_read = f.read(BUFFER_SIZE)
             sock.send(bytes_read)
             progress.update(len(bytes_read))
-        # while True:
-        #     bytes_read = f.read(BUFFER_SIZE)
-        #     if not bytes_read:
-        #         sock.send(b'-1')
-        #         break
-        #     sock.send(bytes_read)
-        #     progress.update(len(bytes_read))
         f.close()
+
 def receive_file():
     None
 
@@ -69,10 +67,18 @@ def receive_chat():
         while True:
             recv_msg = sock.recv(1024)
             decoded_recv_msg = recv_msg.decode('ascii')
+            header = decoded_recv_msg[0:5]
+            msg_body = decoded_recv_msg[5:]
             if recv_msg == b'Server Closed':
                 show_chat("The server is closed")
                 break
-            show_chat(decoded_recv_msg)
+            if header == '[MSG]':
+                show_chat(msg_body)
+            elif header == '[FBC]':
+                broadcast_filename = msg_body
+                show_file(broadcast_filename)
+            elif header == '[FDN]':
+                None
 
     except Exception as e:
         show_chat("An error occurred. Please restart the program.")
@@ -323,13 +329,14 @@ class ChatGui:
         print("insert button: " + str(threading.get_ident()))
         self.chat_log.window_create(tkinter.END, window=tkinter.Button(self.chat_log, text="download", command=self.something))
         self.chat_log.insert(END, "\n")
+
     def change_make_button(self):
         self.make_button.set(True)
 
 
-    def make_download_button(self, text):
+    def make_download_button(self, file_name):
         print("make download: " + str(threading.get_ident()))
-        self.chat_log.window_create(tkinter.END, window=tkinter.Button(self.chat_log, text=text, command=None))
+        self.chat_log.window_create(tkinter.END, window=tkinter.Button(self.chat_log, text=f"Download {file_name}", command=lambda arg1=file_name: show_file(arg1)))
         global makebutton
         makebutton = False
 
