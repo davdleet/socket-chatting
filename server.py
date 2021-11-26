@@ -11,6 +11,7 @@ from tkinter import *
 from tkinter import messagebox
 from threading import Thread
 import tqdm
+import math
 
 
 BUFFER_SIZE = 4096
@@ -145,6 +146,16 @@ def start_socket():
     stop_server = False
 
 
+
+def convert_size(size_bytes):
+   if size_bytes == 0:
+       return "0B"
+   size_name = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
+   i = int(math.floor(math.log(size_bytes, 1024)))
+   p = math.pow(1024, i)
+   s = round(size_bytes / p, 2)
+   return "%s %s" % (s, size_name[i])
+
 def receiver(conn, addr, username):
     connected = True
     print(f"new connection {addr}")
@@ -164,8 +175,9 @@ def receiver(conn, addr, username):
             elif received_header == "[FUP]":
                 print("user uploaded file!")
                 recv_file(conn, received_body)
-                recv_file_name = received_body.split(SEPARATOR)
-                broadcast_file(recv_file_name)
+                recv_file_name = received_body.split(SEPARATOR)[0]
+                recv_file_size = convert_size(recv_file_name[1])
+                broadcast_file(username, recv_file_name, recv_file_size)
 
     except (ConnectionResetError, BrokenPipeError) as e:
         clients.remove(conn)
@@ -177,8 +189,8 @@ def broadcast(message):
     for client in clients:
         client.send(message)
 
-def broadcast_file(filename):
-    msg = '[FBC]' + str(filename)
+def broadcast_file(username, filename, filesize):
+    msg = '[FBC]' + str(username)+':' +str(filename) +"  "+  str(filesize)
     encoded_msg = msg.encode('ascii')
     for client in clients:
         client.send(encoded_msg)
