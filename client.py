@@ -1,17 +1,20 @@
 import socket
 import sys
+import os
 import tkinter
 from tkinter import *
 import threading
 from threading import Thread
-
+from tkinter import filedialog
+import tqdm
 gui = None
 sock = None
 threads = []
 chatting = False
 errorcode = 0
 makebutton = False
-
+BUFFER_SIZE = 4096
+SEPARATOR = "<SEPARATOR>"
 
 # executed by other thread
 def make_download_button(text):
@@ -23,7 +26,7 @@ def make_download_button(text):
 def show_chat(msg):
     global gui
     gui.chat_log.insert(tkinter.END, msg)
-    gui.change_make_button()
+    # gui.change_make_button()
     global makebutton
     makebutton = True
     gui.chat_log.see("end")
@@ -31,6 +34,27 @@ def show_chat(msg):
 
 def testfunc():
     print("hi")
+
+def send_file():
+
+    filepath = filedialog.askopenfilename()
+    print('Selected: ', filepath)
+    filename = filepath.split('/')[-1]
+    print('filename: ', filename)
+    filesize = os.paht.getsize(filepath)
+    sock.send(f'[FSN]{filename}{SEPARATOR}{filesize}'.encode())
+    progress = tqdm.tqdm(range(filesize), f"Sending {filename}", unit="B", unit_scale=True, unit_divisor=1024)
+    with open(filepath, 'rb') as f:
+        bytes_read = None
+        while True:
+            bytes_read = f.read(BUFFER_SIZE)
+            if not bytes_read:
+                break
+            sock.sendall(bytes_read)
+            progress.update(len(bytes_read))
+
+def receive_file():
+    None
 
 # to be executed by other thread
 def receive_chat():
@@ -48,7 +72,7 @@ def receive_chat():
         show_chat("An error occurred. Please restart the program.")
 
 # to be executed by main thread
-def send_chat(event):
+def send_chat(*args):
     try:
         send_msg = gui.chat_value.get() + '\n'
         gui.chat_value.delete(0, tkinter.END)
@@ -72,10 +96,14 @@ def chat():
 # running on main thread splits from here
 def connect_to_server():
     global sock
-    HOST = gui.server_ip_value.get()
-    PORT = gui.port_value.get()
-    password = gui.password_value.get()
-    username = gui.username_value.get()
+    # HOST = gui.server_ip_value.get()
+    # PORT = gui.port_value.get()
+    # password = gui.password_value.get()
+    # username = gui.username_value.get()
+    HOST = '221.155.194.15'
+    PORT = '50007'
+    password = '1234'
+    username= 'temp'
     try:
         for res in socket.getaddrinfo(HOST, PORT, socket.AF_UNSPEC, socket.SOCK_STREAM):
             af, socktype, proto, canonname, sa = res
@@ -253,7 +281,7 @@ class ChatGui:
         self.label1 = Label(self.window, height=100, bg='#252229', fg='white', relief="solid")
         self.label1.pack(padx=20)
 
-        self.chat_log = Text(self.label1, bg='#252229', fg='white', width=69, height=30, wrap=None,
+        self.chat_log = Text(self.label1, bg='#252229', fg='white', width=62, height=25, wrap=None,
                              font=("TkFixedFont", 14),
                              relief="solid")
         self.chat_log.pack(side="left")
@@ -267,9 +295,17 @@ class ChatGui:
         self.label2.pack(padx=25, pady=20, fill='both')
 
         self.chat_value = Entry(self.label2, bg='#252229', fg='white', bd=0, font=("Lucida Grande", 18))
-        self.chat_value.pack(side="left", ipadx=150, ipady=40)
+        self.chat_value.pack(side="left", padx= 10, ipadx=100, ipady=40)
 
         self.chat_value.bind('<Return>', send_chat)
+
+        self.send_button = Button(self.label2, font=("Lucida Grande", 18), height=100, width=6, command=send_chat,
+                                  text='Send')
+        self.send_button.pack(side="right")
+
+        self.file_button = Button(self.label2, font=("Lucida Grande", 18), height=100, width=6, command=send_file, text='Attach')
+        self.file_button.pack(side="right")
+
 
         self.make_button = tkinter.BooleanVar(value=False)
         self.make_button.trace("w", self.insert_button)
@@ -293,14 +329,18 @@ class ChatGui:
 
     def start(self):
         self.window.mainloop()
+        print('program fininshed')
+        os._exit(0)
 
 
 def main():
-    global gui
-    gui = JoinGui()
-    gui.start()
-    # connect_to_server()
-
+    try:
+        global gui
+        gui = JoinGui()
+        gui.start()
+        # connect_to_server()
+    except KeyboardInterrupt as e:
+        print("program ended by user")
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
