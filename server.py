@@ -176,7 +176,7 @@ def receiver(conn, addr, username):
                 print("user uploaded file!")
                 recv_file(conn, received_body)
                 recv_file_name = received_body.split(SEPARATOR)[0]
-                recv_file_size = convert_size(recv_file_name[1])
+                recv_file_size = convert_size(int(recv_file_name[1]))
                 broadcast_file(username, recv_file_name, recv_file_size)
 
     except (ConnectionResetError, BrokenPipeError) as e:
