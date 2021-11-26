@@ -6,10 +6,15 @@ import threading
 import urllib.request
 import ssl
 import tkinter
+import os
 from tkinter import *
 from tkinter import messagebox
 from threading import Thread
+import tqdm
 
+
+BUFFER_SIZE = 4096
+SEPARATOR = "<SEPARATOR>"
 ssl._create_default_https_context = ssl._create_unverified_context
 external_ip = urllib.request.urlopen('https://ident.me/').read().decode('utf8')
 # print(external_ip)
@@ -148,13 +153,17 @@ def receiver(conn, addr, username):
             message = conn.recv(1024)
             decoded_message = message.decode('ascii')
             received_header = decoded_message[0:5]
+            received_message = decoded_message[5:]
             if received_header == "[MSG]":
-                received_message = decoded_message[5:]
                 merged_message = (str(username) + ' : ' + received_message)
                 reencoded_message = merged_message.encode('ascii')
                 broadcast(reencoded_message)
-            elif received_header == "[FIL]":
+            elif received_header == "[FRQ]":
+                print("user requested file!")
+            elif received_header == "[FSN]":
                 print("user uploaded file!")
+                recv_file(decoded_message)
+
     except (ConnectionResetError, BrokenPipeError) as e:
         clients.remove(conn)
         print(username + ' has exited the chat')
@@ -165,6 +174,33 @@ def broadcast(message):
     for client in clients:
         client.send(message)
 
+
+def send_file():
+    None
+
+def recv_file(received):
+    # receive the file infos
+    # receive using client socket, not server socket
+    # received = sock.recv(BUFFER_SIZE).decode()
+    filename, filesize = received.split(SEPARATOR)
+    # remove absolute path if there is
+    filename = os.path.basename(filename)
+    # convert to integer
+    filesize = int(filesize)
+
+    progress = tqdm.tqdm(range(filesize), f"Receiving {filename}", unit="B", unit_scale=True, unit_divisor=1024)
+    with open(filename, "wb") as f:
+        while True:
+            # read 1024 bytes from the socket (receive)
+            bytes_read = sock.recv(BUFFER_SIZE)
+            if not bytes_read:
+                # nothing is received
+                # file transmitting is done
+                break
+            # write to the file the bytes we just received
+            f.write(bytes_read)
+            # update the progress bar
+            progress.update(len(bytes_read))
 
 def get_new_thread():
     t = Thread(target=start_server)
@@ -260,6 +296,7 @@ class Gui:
 
     def start(self):
         self.window.mainloop()
+        os._exit(0)
 
 
 serverGui = Gui()
