@@ -49,7 +49,7 @@ def send_file():
         while True:
             bytes_read = f.read(BUFFER_SIZE)
             if not bytes_read:
-                sock.send(b'')
+                sock.send(b'-1')
                 break
             sock.send(bytes_read)
             progress.update(len(bytes_read))

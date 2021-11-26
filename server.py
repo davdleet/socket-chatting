@@ -193,7 +193,7 @@ def recv_file(conn, received):
             print('recv')
             # read 1024 bytes from the socket (receive)
             bytes_read = conn.recv(BUFFER_SIZE)
-            if bytes_read:
+            if bytes_read == b'-1':
                 print('breaking!')
                 # nothing is received
                 # file transmitting is done
