@@ -187,21 +187,22 @@ def recv_file(conn, received):
     filename = os.path.basename(filename)
     # convert to integer
     filesize = int(filesize)
-
+    recv_times = filesize / BUFFER_SIZE + 1
     with open(filename, "wb") as f:
-        while True:
+        for i in range(recv_times(0, recv_times)):
             print('recv')
-            # read 1024 bytes from the socket (receive)
             bytes_read = conn.recv(BUFFER_SIZE)
             print(bytes_read)
-            if bytes_read == b'-1':
-                print('breaking!')
-                # nothing is received
-                # file transmitting is done
-                break
-            # write to the file the bytes we just received
             f.write(bytes_read)
-            # update the progress bar
+
+        # while True:
+        #     print('recv')
+        #     bytes_read = conn.recv(BUFFER_SIZE)
+        #     print(bytes_read)
+        #     if bytes_read == b'-1':
+        #         print('breaking!')
+        #         break
+        #     f.write(bytes_read)
         f.close()
 
 def get_new_thread():
