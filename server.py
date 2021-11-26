@@ -189,7 +189,7 @@ def recv_file(conn, received):
     filesize = int(filesize)
     recv_times = int(filesize / BUFFER_SIZE + 1)
     with open(filename, "wb") as f:
-        for i in range(recv_times(0, recv_times)):
+        for i in range(0, recv_times):
             print('recv')
             bytes_read = conn.recv(BUFFER_SIZE)
             print(bytes_read)
