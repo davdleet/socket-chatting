@@ -33,7 +33,7 @@ stop_server = False
 listen_thread = None
 clients = []
 server_pw = None
-
+buffers = []
 
 def join_threads():
     for thread in threads:
@@ -158,14 +158,17 @@ def convert_size(size_bytes):
 
 def receiver(conn, addr, username):
     connected = True
+    global buffers
     print(f"new connection {addr}")
     try:
         while started:
             message = conn.recv(1024)
             decoded_message = message.decode('ascii')
-            decoded_message = decoded_message.split('[END]')[0]
-            received_header = decoded_message[0:5]
-            received_body = decoded_message[5:]
+            split_messages = decoded_message.split('[END]')
+            usable_message = split_messages[0]
+            buffers.append(split_messages[1])
+            received_header = usable_message[0:5]
+            received_body = usable_message[5:]
             if received_header == "[MSG]":
                 merged_message = ('[MSG]' + str(username) + ' : ' + received_body)
                 reencoded_message = merged_message.encode('ascii')
@@ -204,6 +207,7 @@ def send_file():
     None
 
 def recv_file(conn, received):
+    global buffer
     filename, filesize = received.split(SEPARATOR)
     filename = os.path.basename(filename)
     filesize = int(filesize)
@@ -215,6 +219,9 @@ def recv_file(conn, received):
         return
     else:
         with open(filename, "wb") as f:
+            for buffer in buffers:
+                encoded = buffer.encode('ascii')
+                f.write(encoded)
             for i in range(0, recv_times):
                 bytes_read = conn.recv(BUFFER_SIZE)
                 f.write(bytes_read)
