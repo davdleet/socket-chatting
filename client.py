@@ -47,7 +47,7 @@ def send_file():
     filename = filepath.split('/')[-1]
     print('filename: ', filename)
     filesize = os.path.getsize(filepath)
-    sock.send(f'[FUP]{filename}{SEPARATOR}{filesize}'.encode())
+    sock.send(f'[FUP]{filename}{SEPARATOR}{filesize}[END]'.encode('ascii'))
     progress = tqdm.tqdm(range(filesize), f"Sending {filename}", unit="B", unit_scale=True, unit_divisor=1024)
     send_times = int(filesize/BUFFER_SIZE) + 1
     with open(filepath, 'rb') as f:
