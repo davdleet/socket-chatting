@@ -7,6 +7,7 @@ import threading
 from threading import Thread
 from tkinter import filedialog
 import tqdm
+import copy
 gui = None
 sock = None
 threads = []
@@ -57,7 +58,7 @@ def send_file():
             progress.update(len(bytes_read))
         f.close()
 
-def receive_file():
+def receive_file(filename):
     None
 
 # to be executed by other thread

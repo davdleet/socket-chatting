@@ -12,7 +12,7 @@ from tkinter import messagebox
 from threading import Thread
 import tqdm
 import math
-
+import copy
 
 BUFFER_SIZE = 4096
 SEPARATOR = "<SEPARATOR>"
@@ -203,16 +203,17 @@ def send_file():
     None
 
 def recv_file(conn, received):
-
+    copy_sock = copy.deepcopy(conn)
     filename, filesize = received.split(SEPARATOR)
     filename = os.path.basename(filename)
     filesize = int(filesize)
     recv_times = int(filesize / BUFFER_SIZE + 1)
     with open(filename, "wb") as f:
         for i in range(0, recv_times):
-            bytes_read = conn.recv(BUFFER_SIZE)
+            bytes_read = copy_sock.recv(BUFFER_SIZE)
             f.write(bytes_read)
         f.close()
+    copy_sock.close()
 
 def get_new_thread():
     t = Thread(target=start_server)
