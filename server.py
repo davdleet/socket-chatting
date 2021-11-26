@@ -162,7 +162,7 @@ def receiver(conn, addr, username):
                 print("user requested file!")
             elif received_header == "[FSN]":
                 print("user uploaded file!")
-                recv_file(decoded_message)
+                recv_file(conn, received_message)
 
     except (ConnectionResetError, BrokenPipeError) as e:
         clients.remove(conn)
@@ -178,7 +178,7 @@ def broadcast(message):
 def send_file():
     None
 
-def recv_file(received):
+def recv_file(conn, received):
     # receive the file infos
     # receive using client socket, not server socket
     # received = sock.recv(BUFFER_SIZE).decode()
@@ -187,13 +187,12 @@ def recv_file(received):
     filename = os.path.basename(filename)
     # convert to integer
     filesize = int(filesize)
-    global sock
 
     progress = tqdm.tqdm(range(filesize), f"Receiving {filename}", unit="B", unit_scale=True, unit_divisor=1024)
     with open(filename, "wb") as f:
         while True:
             # read 1024 bytes from the socket (receive)
-            bytes_read = sock.recv(BUFFER_SIZE)
+            bytes_read = conn.recv(BUFFER_SIZE)
             if not bytes_read:
                 # nothing is received
                 # file transmitting is done
