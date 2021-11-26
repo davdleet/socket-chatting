@@ -207,12 +207,18 @@ def recv_file(conn, received):
     filename, filesize = received.split(SEPARATOR)
     filename = os.path.basename(filename)
     filesize = int(filesize)
+    print(filesize)
     recv_times = int(filesize / BUFFER_SIZE + 1)
-    with open(filename, "wb") as f:
-        for i in range(0, recv_times):
-            bytes_read = conn.recv(BUFFER_SIZE)
-            f.write(bytes_read)
+    if filesize == 0:
+        f = open(filename, "wb")
         f.close()
+        return
+    else:
+        with open(filename, "wb") as f:
+            for i in range(0, recv_times):
+                bytes_read = conn.recv(BUFFER_SIZE)
+                f.write(bytes_read)
+            f.close()
 
 def get_new_thread():
     t = Thread(target=start_server)
