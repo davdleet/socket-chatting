@@ -177,7 +177,10 @@ def receiver(conn, addr, username):
                 recv_file(conn, received_body)
                 recv_file_name = received_body.split(SEPARATOR)[0]
                 recv_file_size = convert_size(int(received_body.split(SEPARATOR)[1]))
-                broadcast_file(username, recv_file_name, recv_file_size)
+                merged_message = '[MSG]' +str(username) + ':'
+                reencoded_message = merged_message.encode('ascii')
+                broadcast(reencoded_message)
+                broadcast_file(recv_file_name, recv_file_size)
 
     except (ConnectionResetError, BrokenPipeError) as e:
         clients.remove(conn)
@@ -189,8 +192,8 @@ def broadcast(message):
     for client in clients:
         client.send(message)
 
-def broadcast_file(username, filename, filesize):
-    msg = '[FBC]' + str(username)+':' +str(filename) +"  "+  str(filesize)
+def broadcast_file(filename, filesize):
+    msg = '[FBC]' +str(filename) +"  "+  str(filesize)
     encoded_msg = msg.encode('ascii')
     for client in clients:
         client.send(encoded_msg)
