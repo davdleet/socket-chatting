@@ -187,6 +187,7 @@ def recv_file(received):
     filename = os.path.basename(filename)
     # convert to integer
     filesize = int(filesize)
+    global sock
 
     progress = tqdm.tqdm(range(filesize), f"Receiving {filename}", unit="B", unit_scale=True, unit_divisor=1024)
     with open(filename, "wb") as f:
