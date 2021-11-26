@@ -90,7 +90,7 @@ def send_chat(*args):
         send_msg = gui.chat_value.get() + '\n'
         gui.chat_value.delete(0, tkinter.END)
         header = "[MSG]"
-        merged_msg = header + send_msg
+        merged_msg = header + send_msg + '[END]'
         encoded_send_msg = merged_msg.encode('ascii')
         sock.send(encoded_send_msg)
     except Exception as e:

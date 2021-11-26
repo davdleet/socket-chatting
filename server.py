@@ -163,7 +163,7 @@ def receiver(conn, addr, username):
         while started:
             message = conn.recv(1024)
             decoded_message = message.decode('ascii')
-            decoded_message = decoded_message.split('[END]')
+            decoded_message = decoded_message.split('[END]')[0]
             received_header = decoded_message[0:5]
             received_body = decoded_message[5:]
             if received_header == "[MSG]":
