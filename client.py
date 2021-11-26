@@ -52,7 +52,7 @@ def send_file():
                 break
             sock.sendall(bytes_read)
             progress.update(len(bytes_read))
-    f.close()
+        f.close()
 def receive_file():
     None
 
