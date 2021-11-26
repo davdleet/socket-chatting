@@ -49,8 +49,9 @@ def send_file():
         while True:
             bytes_read = f.read(BUFFER_SIZE)
             if not bytes_read:
+                sock.send(b'')
                 break
-            sock.sendall(bytes_read)
+            sock.send(bytes_read)
             progress.update(len(bytes_read))
         f.close()
 def receive_file():
