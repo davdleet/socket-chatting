@@ -1,5 +1,3 @@
-# Press ⌃R to execute it or replace it with your code.
-# Press Double ⇧ to search everywhere for classes, files, tool windows, actions, and settings.
 import socket
 import sys
 import tkinter
@@ -7,40 +5,69 @@ from tkinter import *
 import threading
 from threading import Thread
 
-
 gui = None
-sock=None
+sock = None
 threads = []
 chatting = False
 errorcode = 0
+makebutton = False
 
+
+# executed by other thread
+def make_download_button(text):
+    gui.chat_log.window_create(tkinter.END, window=tkinter.Button(gui.chat_log, text=text, command=testfunc))
+    global makebutton
+    makebutton = False
+
+# executed by other thread
+def show_chat(msg):
+    global gui
+    gui.chat_log.insert(tkinter.END, msg)
+    gui.change_make_button()
+    global makebutton
+    makebutton = True
+    gui.chat_log.see("end")
+
+
+def testfunc():
+    print("hi")
+
+# to be executed by other thread
+def receive_chat():
+    print("recv chat: " + str(threading.get_ident()))
+    try:
+        while True:
+            recv_msg = sock.recv(1024)
+            decoded_recv_msg = recv_msg.decode('ascii')
+            if recv_msg == b'Server Closed':
+                show_chat("The server is closed")
+                break
+            show_chat(decoded_recv_msg)
+
+    except Exception as e:
+        show_chat("An error occurred. Please restart the program.")
+
+# to be executed by main thread
+def send_chat(event):
+    try:
+        send_msg = gui.chat_value.get() + '\n'
+        gui.chat_value.delete(0, tkinter.END)
+        encoded_send_msg = send_msg.encode('ascii')
+        sock.send(encoded_send_msg)
+    except Exception as e:
+        show_chat("An error occurred. Please restart the program.")
+
+
+# running on separate thread from main (gui) thread
 def chat():
     global sock
-    while True:
-        send_msg = str(input("enter something to send: "))
-        send_msg = send_msg.encode('ascii')
-        print(type(sock))
-        sock.send(send_msg)
-        recv_msg = sock.recv(1024)
-        print(recv_msg)
-        if recv_msg == b'Server Closed':
-            print("connection with server was lost")
-            break
-    # try:
-    #     while True:
-    #         send_msg = str(input("enter something to send: "))
-    #         send_msg = send_msg.encode('ascii')
-    #         sock.send(send_msg)
-    #         recv_msg = sock.recv(1024)
-    #         print(recv_msg)
-    #         if recv_msg == b'Server Closed':
-    #             print("connection with server was lost")
-    #             break
-    # except Exception as e:
-    #     print("error happened in chat")
-    #     print(e)
-    #     sys.exit(1)
 
+    # receiver_thread = Thread(target=receive_chat)
+    # receiver_thread.start()
+
+    receive_chat()
+
+# running on main thread splits from here
 def connect_to_server():
     global sock
     HOST = gui.server_ip_value.get()
@@ -95,23 +122,14 @@ def connect_to_server():
         encoded_username = username.encode('ascii')
         sock.send(encoded_username)
 
+        global chatting
+        chatting = True
+        print("main: " + str(threading.get_ident()))
         t = Thread(target=chat)
         t.start()
-        # while True:
-        #     send_msg = str(input("enter something to send: "))
-        #     if send_msg == '/quit':
-        #         print("quit chatting from the server")
-        #         break
-        #     send_msg = send_msg.encode('ascii')
-        #     sock.send(send_msg)
-        #     recv_msg = sock.recv(1024)
-        #     print(recv_msg)
-        #     if recv_msg == b'Server Closed':
-        #         print("connection with server was lost")
-        #         break
-        return 0
         # chat(sock)
 
+        return 0
     except socket.error as e:
         print("outer error")
         print(e)
@@ -120,8 +138,11 @@ def connect_to_server():
 
 
 def open_chat_gui():
-    chatgui = ChatGui()
-    chatgui.start()
+    print("opening chat gui")
+    global gui
+    gui = ChatGui()
+    gui.start()
+
 
 
 class JoinGui:
@@ -198,6 +219,10 @@ class JoinGui:
         elif result == 0:
             print("connection was successful")
             self.window.destroy()
+            global gui
+            global chatting
+            global makebutton
+            gui = None
             open_chat_gui()
 
     def reset_input(self):
@@ -205,6 +230,7 @@ class JoinGui:
         self.port_value.delete(0, END)
         self.password_value.delete(0, END)
         self.username_value.delete(0, END)
+
 
     def start(self):
         self.window.mainloop()
@@ -218,9 +244,50 @@ class ChatGui:
         self.window.resizable(True, True)
         self.window.title("Socket Chatting Client")
         self.title = tkinter.Label(self.window, bg='#252229', fg='white', font=("Lucida Grande", 25),
-                                   text="Join a chatting server!",
+                                   text="Chatting Room",
                                    relief="solid")
         self.title.pack(pady=20)
+
+        self.label1 = Label(self.window, height=100, bg='#252229', fg='white', relief="solid")
+        self.label1.pack(padx=20)
+
+        self.chat_log = Text(self.label1, bg='#252229', fg='white', width=69, height=30, wrap=None,
+                             font=("TkFixedFont", 14),
+                             relief="solid")
+        self.chat_log.pack(side="left")
+
+        self.scroll = Scrollbar(self.label1, orient="vertical", command=self.chat_log.yview)
+        self.scroll.pack(side='right', fill=Y)
+
+        self.chat_log.config(yscrollcommand=self.scroll.set)
+
+        self.label2 = Label(self.window, width=100, height=100, bg='#252229', fg='white', relief="solid")
+        self.label2.pack(padx=25, pady=20, fill='both')
+
+        self.chat_value = Entry(self.label2, bg='#252229', fg='white', bd=0, font=("Lucida Grande", 18))
+        self.chat_value.pack(side="left", ipadx=150, ipady=40)
+
+        self.chat_value.bind('<Return>', send_chat)
+
+        self.make_button = tkinter.BooleanVar(value=False)
+        self.make_button.trace("w", self.insert_button)
+
+    def something(self):
+        print(1)
+
+    def insert_button(self, *args):
+        print("insert button: " + str(threading.get_ident()))
+        self.chat_log.window_create(tkinter.END, window=tkinter.Button(self.chat_log, text="download", command=self.something))
+        self.chat_log.insert(END, "\n")
+    def change_make_button(self):
+        self.make_button.set(True)
+
+
+    def make_download_button(self, text):
+        print("make download: " + str(threading.get_ident()))
+        self.chat_log.window_create(tkinter.END, window=tkinter.Button(self.chat_log, text=text, command=None))
+        global makebutton
+        makebutton = False
 
     def start(self):
         self.window.mainloop()
