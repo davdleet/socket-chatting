@@ -147,9 +147,14 @@ def receiver(conn, addr, username):
         while started:
             message = conn.recv(1024)
             decoded_message = message.decode('ascii')
-            merged_message = (str(username) + ' : ' + decoded_message)
-            reencoded_message = merged_message.encode('ascii')
-            broadcast(reencoded_message)
+            received_header = decoded_message[0:5]
+            if received_header == "[MSG]":
+                received_message = decoded_message[5:]
+                merged_message = (str(username) + ' : ' + received_message)
+                reencoded_message = merged_message.encode('ascii')
+                broadcast(reencoded_message)
+            elif received_header == "[FIL]":
+                print("user uploaded file!")
     except (ConnectionResetError, BrokenPipeError) as e:
         clients.remove(conn)
         print(username + ' has exited the chat')

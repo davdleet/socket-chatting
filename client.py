@@ -52,7 +52,9 @@ def send_chat(event):
     try:
         send_msg = gui.chat_value.get() + '\n'
         gui.chat_value.delete(0, tkinter.END)
-        encoded_send_msg = send_msg.encode('ascii')
+        header = "[MSG]"
+        merged_msg = header + send_msg
+        encoded_send_msg = merged_msg.encode('ascii')
         sock.send(encoded_send_msg)
     except Exception as e:
         show_chat("An error occurred. Please restart the program.")
