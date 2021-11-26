@@ -187,7 +187,7 @@ def recv_file(conn, received):
     filename = os.path.basename(filename)
     # convert to integer
     filesize = int(filesize)
-    recv_times = filesize / BUFFER_SIZE + 1
+    recv_times = int(filesize / BUFFER_SIZE + 1)
     with open(filename, "wb") as f:
         for i in range(recv_times(0, recv_times)):
             print('recv')

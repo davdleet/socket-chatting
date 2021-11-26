@@ -44,7 +44,7 @@ def send_file():
     filesize = os.path.getsize(filepath)
     sock.send(f'[FSN]{filename}{SEPARATOR}{filesize}'.encode())
     progress = tqdm.tqdm(range(filesize), f"Sending {filename}", unit="B", unit_scale=True, unit_divisor=1024)
-    send_times = (filesize/BUFFER_SIZE) + 1
+    send_times = int(filesize/BUFFER_SIZE) + 1
     with open(filepath, 'rb') as f:
         bytes_read = None
         for i in range(0, send_times):
