@@ -16,6 +16,7 @@ errorcode = 0
 makebutton = False
 BUFFER_SIZE = 4096
 SEPARATOR = "<SEPARATOR>"
+buffers = []
 
 # executed by other thread
 def make_download_button(text, filename):
@@ -58,8 +59,27 @@ def send_file():
             progress.update(len(bytes_read))
         f.close()
 
-def receive_file(filename):
-    None
+def receive_file(received):
+    global buffer
+    global sock
+    filename, filesize = received.split(SEPARATOR)
+    filename = os.path.basename(filename)
+    filesize = int(filesize)
+    print(filesize)
+    recv_times = int(filesize / BUFFER_SIZE + 1)
+    if filesize == 0:
+        f = open(filename, "wb")
+        f.close()
+        return
+    else:
+        with open(filename, "wb") as f:
+            for buffer in buffers:
+                encoded = buffer.encode('ascii')
+                f.write(encoded)
+            for i in range(0, recv_times):
+                bytes_read = sock.recv(BUFFER_SIZE)
+                f.write(bytes_read)
+            f.close()
 
 # to be executed by other thread
 def receive_chat():

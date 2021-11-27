@@ -13,7 +13,7 @@ from threading import Thread
 import tqdm
 import math
 import copy
-
+from tkinter import filedialog
 BUFFER_SIZE = 4096
 SEPARATOR = "<SEPARATOR>"
 ssl._create_default_https_context = ssl._create_unverified_context
@@ -203,8 +203,22 @@ def broadcast_file(filename, filesize):
         client.send(encoded_msg)
 
 
-def send_file():
-    None
+def send_file(filename, conn):
+    # filepath = filedialog.askopenfilename()
+    # print('Selected: ', filepath)
+    # filename = filepath.split('/')[-1]
+    # print('filename: ', filename)
+    filesize = os.path.getsize(filename)
+    conn.send(f'[FUP]{filename}{SEPARATOR}{filesize}[END]'.encode('ascii'))
+    progress = tqdm.tqdm(range(filesize), f"Sending {filename}", unit="B", unit_scale=True, unit_divisor=1024)
+    send_times = int(filesize / BUFFER_SIZE) + 1
+    with open(filename, 'rb') as f:
+        bytes_read = None
+        for i in range(0, send_times):
+            bytes_read = f.read(BUFFER_SIZE)
+            conn.send(bytes_read)
+            progress.update(len(bytes_read))
+        f.close()
 
 def recv_file(conn, received):
     global buffer
@@ -214,11 +228,11 @@ def recv_file(conn, received):
     print(filesize)
     recv_times = int(filesize / BUFFER_SIZE + 1)
     if filesize == 0:
-        f = open(filename, "wb")
+        f = open('/files/'+filename, "wb")
         f.close()
         return
     else:
-        with open(filename, "wb") as f:
+        with open('/files/'+filename, "wb") as f:
             for buffer in buffers:
                 encoded = buffer.encode('ascii')
                 f.write(encoded)
