@@ -13,6 +13,7 @@ from threading import Thread
 import tqdm
 import math
 import copy
+import errno
 from tkinter import filedialog
 BUFFER_SIZE = 4096
 SEPARATOR = "<SEPARATOR>"
@@ -228,6 +229,12 @@ def recv_file(conn, received):
     filesize = int(filesize)
     print(filesize)
     recv_times = int(filesize / BUFFER_SIZE + 1)
+    if not os.path.exists(os.path.dirname('/files/'+filename)):
+        try:
+            os.makedirs(os.path.dirname('/files/filename'))
+        except OSError as e:
+            if e.errno != errno.EEXIST:
+                raise
     if filesize == 0:
         f = open('/files/'+filename, "wb")
         f.close()
