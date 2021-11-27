@@ -166,7 +166,8 @@ def receiver(conn, addr, username):
             decoded_message = message.decode('ascii')
             split_messages = decoded_message.split('[END]')
             usable_message = split_messages[0]
-            buffers.append(split_messages[1])
+            if len(split_messages) > 1:
+                buffers.append(split_messages[1])
             received_header = usable_message[0:5]
             received_body = usable_message[5:]
             if received_header == "[MSG]":
