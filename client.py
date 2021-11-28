@@ -6,10 +6,12 @@ from tkinter import *
 import threading
 from threading import Thread
 from tkinter import filedialog
+from tkinter import messagebox
 import tqdm
 import errno
 import re
-
+import json
+import time
 gui = None
 sock = None
 threads = []
@@ -30,7 +32,6 @@ username = None
 def show_chat(msg):
     global gui
     gui.chat_log.insert(tkinter.END, msg)
-    # gui.change_make_button()
     global makebutton
     makebutton = True
     gui.chat_log.see("end")
@@ -44,49 +45,39 @@ def testfunc():
     print("hi")
 
 def send_file():
+    filepath = None
+    try:
+        filepath = filedialog.askopenfilename()
+        print('Selected: ', filepath)
+        filename = filepath.split('/')[-1]
+        print('filename: ', filename)
+        filesize = os.path.getsize(filepath)
 
-    filepath = filedialog.askopenfilename()
-    print('Selected: ', filepath)
-    filename = filepath.split('/')[-1]
-    print('filename: ', filename)
-    filesize = os.path.getsize(filepath)
-    sock.sendall(f'[FUP]{filename}{SEPARATOR}{filesize}[END]'.encode('ascii'))
-    # progress = tqdm.tqdm(range(filesize), f"Sending {filename}", unit="B", unit_scale=True, unit_divisor=1024)
-    send_times = int(filesize/BUFFER_SIZE) + 1
-    remaining = filesize
-    with open(filepath, 'rb') as f:
-        bytes_read = None
-        for i in range(0, send_times):
-            bytes_read = f.read(BUFFER_SIZE)
-            sock.send(bytes_read)
-            # progress.update(len(bytes_read))
-        i = 0
-        # while True:
-        #     buff = None
-            # if remaining >= BUFFER_SIZE:
-            #     buff = BUFFER_SIZE
-            #     remaining = remaining - BUFFER_SIZE
-            # elif remaining == 0:
-            #     break
-            # elif remaining < BUFFER_SIZE:
-            #     buff = remaining
-            # else:
-            #     raise
-
-            # bytes_read = f.read(BUFFER_SIZE)
-            # # progress.update(len(bytes_read))
-            # if not bytes_read:
-            #     sock.sendall(b'$[%EOF%]$')
-            #     print()
-            #     print('done sending')
-            #     print(f'sent {i} times')
-            #     break
-            # sock.sendall(bytes_read)
-            # i = i + 1
-        f.close()
+        fup = f'[FUP]{filename}{SEPARATOR}{filesize}[END]'
+        filler_len = 1024 - len(fup)
+        filler = ' ' * filler_len
+        fup = fup + filler
+        sock.sendall(fup.encode('ascii'))
+        with open(filepath, 'rb') as f:
+            bytes_read = None
+            while True:
+                bytes_read = f.read(BUFFER_SIZE)
+                if not bytes_read:
+                    break
+                sock.sendall(bytes_read)
+            f.close()
+    except UnicodeEncodeError:
+        print("invalid upload title")
+        messagebox.showerror("error", "please make sure your files have english titles")
+    except FileNotFoundError:
+        if filepath == '':
+            print('upload cancelled')
+        else:
+            print("File was not found")
+            messagebox.showerror("error", "File was not found")
 
 def request_file(filename, file_id, file_size):
-    print(f'request {filename} id: {file_id} size: {file_size}')
+    print(f'requesting {filename} id: {file_id} size: {file_size}')
     request_filename = f'{file_id}-{filename}'
     request = f'[FRQ]{request_filename}[END]'
     filler_len = 4096 - len(request)
@@ -100,9 +91,6 @@ def receive_file(filename, file_size):
     global sock
 
     recv_times = int(int(file_size) / BUFFER_SIZE + 1)
-
-    remaining = file_size
-    print(f'must receive {recv_times} times!')
     if not os.path.exists(os.path.dirname('downloads')):
         try:
             os.makedirs('downloads')
@@ -115,56 +103,49 @@ def receive_file(filename, file_size):
         return
     else:
         with open('downloads/' + filename, "wb") as f:
-            eof = '$[%EOF%]$'
-            eof_fill_len = 4096 - len(eof)
-            eof_fill = ' ' * eof_fill_len
-            eof = eof + eof_fill
             remaining_count = int(file_size)
             bytes_read = None
             while True:
-                if BUFFER_SIZE > remaining_count > 0:
+                if remaining_count == 0:
+                    break
+                elif BUFFER_SIZE > remaining_count > 0:
 
                     bytes_read = sock.recv(remaining_count)
                     while len(bytes_read) != remaining_count:
                         bytes_read = bytes_read + sock.recv(remaining_count - len(bytes_read))
                     remaining_count = remaining_count - len(bytes_read)
                 else:
-                    print('check to receive last')
                     bytes_read = sock.recv(BUFFER_SIZE)
                     while len(bytes_read) != BUFFER_SIZE:
                         bytes_read = bytes_read + sock.recv(BUFFER_SIZE - len(bytes_read))
                     remaining_count = remaining_count - len(bytes_read)
-                # decoded_bytes_read = bytes_read.decode('ascii')
-                if bytes_read == eof.encode('utf-8'):
-                    print(f'breaking receivE!')
-                    break
-
                 f.write(bytes_read)
 
             f.close()
+
 # to be executed by other thread
 def receive_chat():
-    print("recv chat: " + str(threading.get_ident()))
+    global gui
+    global chatting
+    while not gui:
+        print('wait for gui')
+        None
+    time.sleep(1)
+    print('receiving chat')
     recv_msg = None
     try:
-        while True:
+        while chatting:
             recv_msg = sock.recv(4096)
             decoded_recv_msg = recv_msg.decode('ascii')
             decoded_recv_msg = decoded_recv_msg.rstrip()
             usable_message = decoded_recv_msg.replace('[END]', '')
-            # split_messages = decoded_recv_msg.split('[END]')
-            # usable_message = split_messages[0]
-            # if len(split_messages) > 1:
-            #     print("more than one split message")
-            #     if split_messages[1] != '':
-            #         buffers.append(split_messages[1])
-            #         print(split_messages[1])
             header = usable_message[0:5]
             msg_body = usable_message[5:]
             if recv_msg == b'Server Closed':
                 show_chat("The server is closed")
                 break
             if header == '[MSG]':
+                print(f'message from user {msg_body}')
                 show_chat(msg_body)
             elif header == '[FBC]':
                 split_body = msg_body.split(SEPARATOR)
@@ -172,85 +153,128 @@ def receive_chat():
                 broadcast_fileid = split_body[1]
                 broadcast_conv_filesize = split_body[2]
                 broadcast_filesize = split_body[3]
+                print(f'file broadcasted: {broadcast_filename}')
                 show_file(broadcast_filename, broadcast_fileid, broadcast_conv_filesize, broadcast_filesize)
             elif header == '[FDN]':
-                print('header entered!')
                 split_body = msg_body.split(SEPARATOR)
                 download_filename = split_body[0]
                 download_size = split_body[1]
+                print(f'downloading {download_filename}')
                 receive_file(download_filename, download_size)
-
+            else:
+                if usable_message == '':
+                    return
+                print('usable message : ' + usable_message)
+                show_chat(usable_message + '\n')
+    except (BrokenPipeError, ConnectionResetError) as e:
+        print('connection broken')
+        show_chat("Connection is broken. Please re-boot the program.")
     except Exception as e:
-        #print(f'receive message was: {recv_msg}')
-        show_chat("An error occurred. Please restart the program.")
+        print(e.with_traceback())
+        # show_chat("An error occurred.")
+        # receive_chat()
 
 
 # to be executed by main thread
 def send_chat(*args):
+    global gui
+    global chatting
+    global sock
     try:
         send_msg = gui.chat_value.get() + '\n'
+
         gui.chat_value.delete(0, tkinter.END)
         header = "[MSG]"
         merged_msg = header + send_msg + '[END]'
         encoded_send_msg = merged_msg.encode('ascii')
         sock.send(encoded_send_msg)
+        print('message sent!')
+        if send_msg == '/quit\n':
+            if os.path.exists('credential.json'):
+                os.remove('credential.json')
+            print('quitting chat room')
+            sock.close()
+            gui.destroy()
+            chatting = False
+            print('normal end')
+            os._exit(0)
     except Exception as e:
+        print(e)
         show_chat("An error occurred. Please restart the program.")
+        os._exit(0)
+
 
 
 # running on separate thread from main (gui) thread
 def chat():
     global sock
-
-    # receiver_thread = Thread(target=receive_chat)
-    # receiver_thread.start()
-
     receive_chat()
 
 # running on main thread splits from here
-def connect_to_server():
+def connect_to_server(HOST, PORT, password, username, input_token):
     global sock
+    # global HOST, PORT, password, username
+
+    # HOST = '221.155.194.15'
+    # PORT = '50007'
+    # password = '1234'
+    # username = 'temp'
+
     # HOST = gui.server_ip_value.get()
     # PORT = gui.port_value.get()
     # password = gui.password_value.get()
     # username = gui.username_value.get()
-    global HOST, PORT, password, username
-    HOST = '221.155.194.15'
-    PORT = '50007'
-    password = '1234'
-    username= 'temp'
+
+    global chatting
     try:
+
         for res in socket.getaddrinfo(HOST, PORT, socket.AF_UNSPEC, socket.SOCK_STREAM):
             af, socktype, proto, canonname, sa = res
             # create socket
             try:
                 sock = socket.socket(af, socktype, proto)
             except OSError as msg:
-                print("oserror1")
-                print(msg)
+                global gui
                 sock = None
                 continue
             # connect to server socket
             try:
                 sock.connect(sa)
             except OSError as msg:
-                print("oserror2")
-                print(msg)
                 sock.close()
                 sock = None
                 continue
             except socket.error as e:
+                print('socket error')
                 sock = None
-                print("socket")
             # break for loop if connection was made for IPv4 or IPv6
             break
         # If sock is still None after for loop, connection to server failed
         if sock is None:
-            print('could not open socket')
+            #messagebox.showerror('error', 'Error opening socket')
             return 2
 
         # after successfully connecting to the server socket
         pw_verified = False
+
+        #token reconnect if token is provided
+        if input_token:
+            print(f'token is: {input_token}')
+            sock.send(input_token.encode('ascii'))
+            token_response = sock.recv(1024)
+            decoded_token_response = token_response.decode('ascii')
+            if decoded_token_response == 'Connection Successful':
+                chatting = True
+                t = Thread(target=chat)
+                t.start()
+                return 0
+            elif decoded_token_response == 'User Already Connected':
+                return 5
+            else:
+                return 3
+        else:
+            print('no token!')
+            sock.send(b'****************')
 
         # check password
         encoded_password = password.encode('ascii')
@@ -263,68 +287,32 @@ def connect_to_server():
             print(decoded_pw_check_msg)
             return 1
 
+
         # send username to server
         encoded_username = username.encode('ascii')
         sock.send(encoded_username)
 
-        global chatting
+        token = sock.recv(1024)
+        decoded_token = token.decode('ascii')
+        print(decoded_token)
+        credential = {
+            'token':decoded_token,
+            'host':HOST,
+            'port':PORT
+        }
+        with open('credential.json', 'w') as f:
+            json.dump(credential, f)
+            f.close()
         chatting = True
-        print("main: " + str(threading.get_ident()))
+
         t = Thread(target=chat)
         t.start()
-        # chat(sock)
-
+        print('all the way')
         return 0
     except socket.error as e:
-        print("outer error")
         print(e)
     except KeyboardInterrupt as e:
         print("client closed by user")
-
-def new_sock():
-    newsock = None
-    # HOST = gui.server_ip_value.get()
-    # PORT = gui.port_value.get()
-    # password = gui.password_value.get()
-    # username = gui.username_value.get()
-    global HOST, PORT, password, username
-
-    try:
-        for res in socket.getaddrinfo(HOST, PORT, socket.AF_UNSPEC, socket.SOCK_STREAM):
-            af, socktype, proto, canonname, sa = res
-            # create socket
-            try:
-                newsock = socket.socket(af, socktype, proto)
-            except OSError as msg:
-                print("oserror1")
-                print(msg)
-                newsock = None
-                continue
-            # connect to server socket
-            try:
-                newsock.connect(sa)
-            except OSError as msg:
-                print("oserror2")
-                print(msg)
-                newsock.close()
-                newsock = None
-                continue
-            except socket.error as e:
-                newsock = None
-                print("socket")
-            # break for loop if connection was made for IPv4 or IPv6
-            break
-        # If sock is still None after for loop, connection to server failed
-        if newsock is None:
-            print('could not open socket')
-            return None
-        return newsock
-    except socket.error as e:
-        print("outer error")
-        print(e)
-    except KeyboardInterrupt as e:
-        print("client closed by user")
-
 
 def open_chat_gui():
     print("opening chat gui")
@@ -400,9 +388,20 @@ class JoinGui:
         self.reset_button.pack(side="right", padx=20, ipadx=3, ipady=3)
 
     def press_start_button(self):
-        result = connect_to_server()
+        # host = self.server_ip_value.get()
+        # port = self.port_value.get()
+        # pw = self.password_value.get()
+        # usern = self.username_value.get()
+
+        host = '221.155.194.15'
+        port = '50007'
+        pw = '1234'
+        usern = 'temp'
+
+        result = connect_to_server(host, port, pw, usern, None)
         if result == 1:
             print("Your password was wrong")
+            messagebox.showerror("error", "Wrong server password!")
         elif result > 0:
             print("There was some error in connecting")
         elif result == 0:
@@ -413,6 +412,9 @@ class JoinGui:
             global makebutton
             gui = None
             open_chat_gui()
+
+    def destroy(self):
+        self.window.destroy()
 
     def reset_input(self):
         self.server_ip_value.delete(0, END)
@@ -469,11 +471,7 @@ class ChatGui:
         self.make_button = tkinter.BooleanVar(value=False)
         self.make_button.trace("w", self.insert_button)
 
-    def something(self):
-        print(1)
-
     def insert_button(self, *args):
-        print("insert button: " + str(threading.get_ident()))
         self.chat_log.window_create(tkinter.END, window=tkinter.Button(self.chat_log, text="download", command=self.something))
         self.chat_log.insert(END, "\n")
 
@@ -482,13 +480,16 @@ class ChatGui:
 
 
     def make_download_button(self, file_name, file_id, conv_filesize, file_size):
-        print("make download: " + str(threading.get_ident()))
+
         self.chat_log.window_create(tkinter.END, window=tkinter.Button(self.chat_log, text=f"Download {file_name} - {conv_filesize}", command=lambda arg1=file_name, arg2=file_id, arg3=file_size: request_file(arg1, arg2, arg3)))
         global makebutton
         makebutton = False
 
     def start(self):
-        self.window.mainloop()
+        try:
+            self.window.mainloop()
+        except KeyboardInterrupt as e:
+            print('program closed from terminal')
         print('program fininshed')
         os._exit(0)
 
@@ -496,9 +497,32 @@ class ChatGui:
 def main():
     try:
         global gui
-        gui = JoinGui()
-        gui.start()
-        # connect_to_server()
+        if os.path.exists('credential.json'):
+            with open('credential.json') as f:
+                credential = json.load(f)
+                token = credential['token']
+                host = credential['host']
+                port = credential['port']
+                result = connect_to_server(host, port, '', '', token)
+                if result == 0:
+                    print("reconnection was successful")
+                    open_chat_gui()
+                elif result == 2:
+                    print('could not open the socket with credentials')
+                    gui = JoinGui()
+                    gui.start()
+                elif result == 5:
+                    print('this user is already logged in')
+                    gui = JoinGui()
+                    gui.start()
+                else:
+                    print('token was invalid')
+                    gui = JoinGui()
+                    gui.start()
+                f.close()
+        else:
+            gui = JoinGui()
+            gui.start()
     except KeyboardInterrupt as e:
         print("program ended by user")
 
