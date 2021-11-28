@@ -23,6 +23,7 @@ external_ip = urllib.request.urlopen('https://ident.me/').read().decode('utf8')
 
 HOST = None
 PORT = None
+server_pw = None
 hostname = socket.gethostname()
 local_ip = socket.gethostbyname(hostname)
 # window = tkinter.Tk()
@@ -33,8 +34,9 @@ started = False
 stop_server = False
 listen_thread = None
 clients = []
-server_pw = None
+
 buffers = []
+file_id = 1
 
 def join_threads():
     for thread in threads:
@@ -45,6 +47,7 @@ def join_threads():
 
 def setup():
     global sock
+    global HOST
     global PORT
     global server_pw
     message = "nothing"
@@ -101,7 +104,7 @@ def listen_loop():
             print('connected by', addr)
 
             # password verification
-            entered_pw = conn.recv(1024)
+            entered_pw = conn.recv(4096)
             decoded_entered_pw = entered_pw.decode('ascii')
             print("decoded pw: " + str(decoded_entered_pw))
             print("server pw: " + str(server_pw))
@@ -128,6 +131,8 @@ def listen_loop():
             rcv_thread.start()
     except ConnectionAbortedError as e:
         print("Server closed by admin")
+    except ConnectionResetError as e:
+        print('connection was reset')
 
 
 def start_socket():
@@ -160,33 +165,51 @@ def convert_size(size_bytes):
 def receiver(conn, addr, username):
     connected = True
     global buffers
+    global file_id
     print(f"new connection {addr}")
     try:
         while started:
             message = conn.recv(1024)
             decoded_message = message.decode('ascii')
+            # usable_message = decoded_message.replace('[END]', '')
+            decoded_message = decoded_message.rstrip()
             split_messages = decoded_message.split('[END]')
             usable_message = split_messages[0]
-            if len(split_messages) > 1:
+            if len(split_messages) > 1 and split_messages[1] != '':
                 buffers.append(split_messages[1])
             received_header = usable_message[0:5]
             received_body = usable_message[5:]
             if received_header == "[MSG]":
-                merged_message = ('[MSG]' + str(username) + ' : ' + received_body)
+                merged_message = ('[MSG]' + str(username) + ' : ' + received_body + '[END]')
                 reencoded_message = merged_message.encode('ascii')
                 broadcast(reencoded_message)
             elif received_header == "[FRQ]":
                 print("user requested file!")
-
+                print(f'message was {message}')
+                print(f'body was: {received_body}')
+                to_send = received_body
+                send_size = os.path.getsize(f'files/{to_send}')
+                ack = f'[FDN]{received_body}{SEPARATOR}{send_size}[END]'
+                filler_len = 4096 - len(ack)
+                filler = ' ' * filler_len
+                ack = ack + filler
+                encoded_ack = ack.encode('ascii')
+                conn.send(encoded_ack)
+                requested_file = received_body
+                send_file(requested_file, conn)
             elif received_header == "[FUP]":
                 print("user uploaded file!")
                 recv_file(conn, received_body)
-                recv_file_name = received_body.split(SEPARATOR)[0]
-                recv_file_size = convert_size(int(received_body.split(SEPARATOR)[1]))
-                merged_message = '[MSG]' +str(username) + ':'
+                current_file_id = file_id
+                file_id = file_id + 1
+                recv_body_split = received_body.split(SEPARATOR)
+                recv_file_name = recv_body_split[0]
+                recv_file_size = int(recv_body_split[1])
+                converted_file_size = convert_size(int(recv_body_split[1]))
+                merged_message = '[MSG]' +str(username) + ':' + '[END]'
                 reencoded_message = merged_message.encode('ascii')
                 broadcast(reencoded_message)
-                broadcast_file(recv_file_name, recv_file_size)
+                broadcast_file(recv_file_name, current_file_id, converted_file_size, recv_file_size)
 
     except (ConnectionResetError, BrokenPipeError) as e:
         clients.remove(conn)
@@ -198,8 +221,8 @@ def broadcast(message):
     for client in clients:
         client.send(message)
 
-def broadcast_file(filename, filesize):
-    msg = '[FBC]' +str(filename) +"  "+  str(filesize)
+def broadcast_file(filename, current_file_id, conv_filesize, filesize):
+    msg = '[FBC]' +str(filename) + SEPARATOR +str(current_file_id)+SEPARATOR+str(conv_filesize) + SEPARATOR +str(filesize)+'[END]'
     encoded_msg = msg.encode('ascii')
     for client in clients:
         client.send(encoded_msg)
@@ -210,43 +233,103 @@ def send_file(filename, conn):
     # print('Selected: ', filepath)
     # filename = filepath.split('/')[-1]
     # print('filename: ', filename)
-    filesize = os.path.getsize(filename)
-    conn.send(f'[FUP]{filename}{SEPARATOR}{filesize}[END]'.encode('ascii'))
-    progress = tqdm.tqdm(range(filesize), f"Sending {filename}", unit="B", unit_scale=True, unit_divisor=1024)
+    filepath = f'files/{filename}'
+    filesize = os.path.getsize(filepath)
+    # conn.send(f'[FUP]{filename}{SEPARATOR}{filesize}[END]'.encode('ascii'))
     send_times = int(filesize / BUFFER_SIZE) + 1
-    with open(filename, 'rb') as f:
+    with open(f'files/{filename}', 'rb') as f:
         bytes_read = None
-        for i in range(0, send_times):
+
+        eof = '$[%EOF%]$'
+        fill_len = 4096 - len(eof)
+        fill = ' ' * fill_len
+        eof = eof + fill
+
+        i = 0
+        while True:
             bytes_read = f.read(BUFFER_SIZE)
-            conn.send(bytes_read)
-            progress.update(len(bytes_read))
+            if not bytes_read:
+
+                conn.sendall(eof.encode('utf-8'))
+                break
+
+            i = i + 1
+            conn.sendall(bytes_read)
+
+        # for i in range(0, send_times):
+        #
+        #     bytes_read = f.read(BUFFER_SIZE)
+        #     conn.sendall(bytes_read)
+        #     if i == send_times - 1:
+        #         print(bytes_read)
+        #         print(f'last was {len(bytes_read)}')
+        #     #progress.update(len(bytes_read))
         f.close()
+        #print(f'sent {i} times')
 
 def recv_file(conn, received):
-    global buffer
+    global buffers
+    global file_id
     filename, filesize = received.split(SEPARATOR)
     filename = os.path.basename(filename)
     filesize = int(filesize)
     print(filesize)
     recv_times = int(filesize / BUFFER_SIZE + 1)
-    if not os.path.exists(os.path.dirname('/files/'+filename)):
+    remaining = filesize
+    if not os.path.exists(os.path.dirname('files')):
         try:
-            os.makedirs(os.path.dirname('/files/filename'))
+            os.makedirs('files')
         except OSError as e:
             if e.errno != errno.EEXIST:
+                print('oserror!')
                 raise
     if filesize == 0:
-        f = open('/files/'+filename, "wb")
+        f = open('files/'+str(file_id)+'-'+filename, "wb")
         f.close()
         return
     else:
-        with open('/files/'+filename, "wb") as f:
+        with open('files/'+str(file_id)+'-'+filename, "wb") as f:
             for buffer in buffers:
                 encoded = buffer.encode('ascii')
                 f.write(encoded)
+            buffers = []
             for i in range(0, recv_times):
                 bytes_read = conn.recv(BUFFER_SIZE)
                 f.write(bytes_read)
+            buffers=[]
+
+            # print('after open')
+            # i = 0
+            # for buffer in buffers:
+            #     f.write(buffer.encode('ascii'))
+            # buffers = []
+            # while True:
+            #     bytes_read = conn.recv(BUFFER_SIZE)
+            #     i = i + 1
+            #     print(i, end='')
+            #     if '$[%EOF%]$'.encode('utf-8') in bytes_read:
+            #
+            #         print('done receiving')
+            #         break
+            #     f.write(bytes_read)
+
+            # while True:
+            #     buff = None
+            #     if remaining >= BUFFER_SIZE:
+            #         buff = BUFFER_SIZE
+            #         remaining = remaining - BUFFER_SIZE
+            #     elif remaining == 0:
+            #         break
+            #     elif remaining < BUFFER_SIZE:
+            #         buff = remaining
+            #         remaining = 0
+            #     else:
+            #         raise
+            #     bytes_read = conn.recv(buff)
+            #     if not bytes_read:
+            #         print('breaking!')
+            #         break
+            #     f.write(bytes_read)
             f.close()
 
 def get_new_thread():
