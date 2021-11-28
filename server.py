@@ -7,6 +7,8 @@ import urllib.request
 import ssl
 import tkinter
 import os
+import random
+import string
 from tkinter import *
 from tkinter import messagebox
 from threading import Thread
@@ -19,14 +21,12 @@ BUFFER_SIZE = 4096
 SEPARATOR = "<SEPARATOR>"
 ssl._create_default_https_context = ssl._create_unverified_context
 external_ip = urllib.request.urlopen('https://ident.me/').read().decode('utf8')
-# print(external_ip)
 
 HOST = None
 PORT = None
 server_pw = None
 hostname = socket.gethostname()
 local_ip = socket.gethostbyname(hostname)
-# window = tkinter.Tk()
 sock = None
 serverGui = None
 threads = []
@@ -35,22 +35,21 @@ stop_server = False
 listen_thread = None
 clients = []
 
-buffers = []
 file_id = 1
+
+user_tokens = {}
+online_tokens =[]
 
 def join_threads():
     for thread in threads:
         print("joining..")
         thread.join()
 
-
-
 def setup():
     global sock
     global HOST
     global PORT
     global server_pw
-    message = "nothing"
     try:
         PORT = serverGui.port_value.get()
         server_pw = str(serverGui.password_value.get())
@@ -78,7 +77,7 @@ def setup():
             break
         return sock
     except Exception as e:
-        messagebox.showerror("Error!", e)
+        # messagebox.showerror("Error!", e)
         sys.exit(1)
 
 
@@ -87,14 +86,9 @@ def start_server():
     if sock is None:
         print("could not open socket")
         return
-        print("test")
     print("starting socket...")
     start_socket()
     return
-
-def add_to_list(client_info):
-    None
-
 
 def listen_loop():
     try:
@@ -103,8 +97,37 @@ def listen_loop():
             conn, addr = sock.accept()
             print('connected by', addr)
 
+            #check for tokens
+            conn_token = conn.recv(16)
+            decoded_conn_token = conn_token.decode('ascii')
+
+            if decoded_conn_token == '****************':
+                print('no token provided')
+            else:
+                if decoded_conn_token in user_tokens.keys():
+                    if decoded_conn_token in online_tokens:
+                        print('this user is already online!')
+                        conn.send(b'User Already Connected')
+                        continue
+                    conn_username = user_tokens[decoded_conn_token]
+                    print(f'{conn_username}:{decoded_conn_token} reconnected with credential token')
+                    conn.send(b'Connection Successful')
+                    clients.append(conn)
+                    bc_msg = f'{conn_username} reconnected\n'
+                    broadcast(bc_msg.encode('ascii'))
+                    online_tokens.append(decoded_conn_token)
+                    rcv_thread = Thread(target=receiver, args=(conn, addr, conn_username, decoded_conn_token, 0))
+                    rcv_thread.start()
+                    continue
+                else:
+                    print('invalid token provided')
+                    print(decoded_conn_token)
+                    conn.send(b'Invalid Token')
+                    continue
+
+
             # password verification
-            entered_pw = conn.recv(4096)
+            entered_pw = conn.recv(1024)
             decoded_entered_pw = entered_pw.decode('ascii')
             print("decoded pw: " + str(decoded_entered_pw))
             print("server pw: " + str(server_pw))
@@ -122,22 +145,37 @@ def listen_loop():
             # get a username from the user
             username = conn.recv(1024)
             decoded_username = username.decode('ascii')
-
-            # list_entry = "{:<30}".format(str(addr[0])) + "{:<20}".format(str(addr[1]))
             list_entry = f"{addr[0] : <40}{addr[1] : <19}{decoded_username : <20}\n"
             serverGui.list.insert(END, list_entry)
             clients.append(conn)
-            rcv_thread = Thread(target=receiver, args=(conn, addr, decoded_username))
+
+            client_token = generate_token()
+            while client_token in user_tokens:
+                client_token = generate_token()
+            user_tokens[client_token] = username.decode('ascii')
+            conn.send(client_token.encode('ascii'))
+
+            bc_new = f'{decoded_username} joined the room\n'
+            broadcast(bc_new.encode('ascii'))
+
+            online_tokens.append(client_token)
+
+            rcv_thread = Thread(target=receiver, args=(conn, addr, decoded_username, client_token, 0))
             rcv_thread.start()
     except ConnectionAbortedError as e:
         print("Server closed by admin")
+        #broadcast(b'The server was closed by the admin')
+        global stop_server
+        stop_server = True
     except ConnectionResetError as e:
-        print('connection was reset')
+        print('connection reset while connecting with client')
 
+def generate_token():
+    token = ''.join(random.choices(string.ascii_uppercase + string.ascii_lowercase + string.digits, k=16))
+    return token
 
 def start_socket():
     print("server open!")
-    # messagebox.showinfo("Success", "Server was successfully started")
     global started
     global stop_server
     started = True
@@ -162,11 +200,15 @@ def convert_size(size_bytes):
    s = round(size_bytes / p, 2)
    return "%s %s" % (s, size_name[i])
 
-def receiver(conn, addr, username):
+def send_to_client(conn, header, body):
+    conn.send(f'{header}{body}'.encode('ascii'))
+
+def receiver(conn, addr, username, token, count):
     connected = True
-    global buffers
     global file_id
-    print(f"new connection {addr}")
+    if count == 0:
+        None
+    print(f"receiving from {addr}...")
     try:
         while started:
             message = conn.recv(1024)
@@ -175,18 +217,24 @@ def receiver(conn, addr, username):
             decoded_message = decoded_message.rstrip()
             split_messages = decoded_message.split('[END]')
             usable_message = split_messages[0]
-            if len(split_messages) > 1 and split_messages[1] != '':
-                buffers.append(split_messages[1])
             received_header = usable_message[0:5]
             received_body = usable_message[5:]
             if received_header == "[MSG]":
                 merged_message = ('[MSG]' + str(username) + ' : ' + received_body + '[END]')
+                print(f'user message - {username} : {received_body}')
+                if received_body == '/quit\n':
+                    if conn in clients:
+                        clients.remove(conn)
+                    if user_tokens[token]:
+                        del user_tokens[token]
+                    conn.close()
+                    leave_bc = f'{username} left the room'
+                    broadcast(leave_bc.encode('ascii'))
+                    return
                 reencoded_message = merged_message.encode('ascii')
                 broadcast(reencoded_message)
             elif received_header == "[FRQ]":
-                print("user requested file!")
-                print(f'message was {message}')
-                print(f'body was: {received_body}')
+                print(f"{username} requested {received_body}")
                 to_send = received_body
                 send_size = os.path.getsize(f'files/{to_send}')
                 ack = f'[FDN]{received_body}{SEPARATOR}{send_size}[END]'
@@ -198,12 +246,12 @@ def receiver(conn, addr, username):
                 requested_file = received_body
                 send_file(requested_file, conn)
             elif received_header == "[FUP]":
-                print("user uploaded file!")
                 recv_file(conn, received_body)
                 current_file_id = file_id
                 file_id = file_id + 1
                 recv_body_split = received_body.split(SEPARATOR)
                 recv_file_name = recv_body_split[0]
+                print(f"{username} uploaded {recv_file_name} file_id: {current_file_id}")
                 recv_file_size = int(recv_body_split[1])
                 converted_file_size = convert_size(int(recv_body_split[1]))
                 merged_message = '[MSG]' +str(username) + ':' + '[END]'
@@ -212,9 +260,17 @@ def receiver(conn, addr, username):
                 broadcast_file(recv_file_name, current_file_id, converted_file_size, recv_file_size)
 
     except (ConnectionResetError, BrokenPipeError) as e:
-        clients.remove(conn)
-        print(username + ' has exited the chat')
+        if conn in clients:
+            clients.remove(conn)
+        if token in online_tokens:
+            online_tokens.remove(token)
+        print(username + ' disconnected')
+    except Exception as e:
+        send_to_client(conn, '', 'An error occurred processing your last request.\n')
+        receiver(conn, addr, username, token, count+1)
     print(f"connection lost with {addr}")
+    disconnected_bc = f'{username} disconnected\n'
+    broadcast(disconnected_bc.encode('ascii'))
 
 
 def broadcast(message):
@@ -229,53 +285,22 @@ def broadcast_file(filename, current_file_id, conv_filesize, filesize):
 
 
 def send_file(filename, conn):
-    # filepath = filedialog.askopenfilename()
-    # print('Selected: ', filepath)
-    # filename = filepath.split('/')[-1]
-    # print('filename: ', filename)
-    filepath = f'files/{filename}'
-    filesize = os.path.getsize(filepath)
-    # conn.send(f'[FUP]{filename}{SEPARATOR}{filesize}[END]'.encode('ascii'))
-    send_times = int(filesize / BUFFER_SIZE) + 1
     with open(f'files/{filename}', 'rb') as f:
         bytes_read = None
 
-        eof = '$[%EOF%]$'
-        fill_len = 4096 - len(eof)
-        fill = ' ' * fill_len
-        eof = eof + fill
-
-        i = 0
         while True:
             bytes_read = f.read(BUFFER_SIZE)
             if not bytes_read:
-
-                conn.sendall(eof.encode('utf-8'))
                 break
-
-            i = i + 1
             conn.sendall(bytes_read)
-
-        # for i in range(0, send_times):
-        #
-        #     bytes_read = f.read(BUFFER_SIZE)
-        #     conn.sendall(bytes_read)
-        #     if i == send_times - 1:
-        #         print(bytes_read)
-        #         print(f'last was {len(bytes_read)}')
-        #     #progress.update(len(bytes_read))
         f.close()
-        #print(f'sent {i} times')
 
 def recv_file(conn, received):
-    global buffers
     global file_id
     filename, filesize = received.split(SEPARATOR)
     filename = os.path.basename(filename)
     filesize = int(filesize)
-    print(filesize)
-    recv_times = int(filesize / BUFFER_SIZE + 1)
-    remaining = filesize
+
     if not os.path.exists(os.path.dirname('files')):
         try:
             os.makedirs('files')
@@ -289,47 +314,24 @@ def recv_file(conn, received):
         return
     else:
         with open('files/'+str(file_id)+'-'+filename, "wb") as f:
-            for buffer in buffers:
-                encoded = buffer.encode('ascii')
-                f.write(encoded)
-            buffers = []
-            for i in range(0, recv_times):
-                bytes_read = conn.recv(BUFFER_SIZE)
+
+            remaining_count = int(filesize)
+            bytes_read = None
+            while True:
+                if remaining_count == 0:
+                    break
+                elif BUFFER_SIZE > remaining_count > 0:
+                    bytes_read = conn.recv(remaining_count)
+                    while len(bytes_read) != remaining_count:
+                        bytes_read = bytes_read + conn.recv(remaining_count - len(bytes_read))
+                    remaining_count = remaining_count - len(bytes_read)
+                else:
+                    bytes_read = conn.recv(BUFFER_SIZE)
+                    while len(bytes_read) != BUFFER_SIZE:
+                        bytes_read = bytes_read + conn.recv(BUFFER_SIZE - len(bytes_read))
+                    remaining_count = remaining_count - len(bytes_read)
                 f.write(bytes_read)
-            buffers=[]
 
-            # print('after open')
-            # i = 0
-            # for buffer in buffers:
-            #     f.write(buffer.encode('ascii'))
-            # buffers = []
-            # while True:
-            #     bytes_read = conn.recv(BUFFER_SIZE)
-            #     i = i + 1
-            #     print(i, end='')
-            #     if '$[%EOF%]$'.encode('utf-8') in bytes_read:
-            #
-            #         print('done receiving')
-            #         break
-            #     f.write(bytes_read)
-
-            # while True:
-            #     buff = None
-            #     if remaining >= BUFFER_SIZE:
-            #         buff = BUFFER_SIZE
-            #         remaining = remaining - BUFFER_SIZE
-            #     elif remaining == 0:
-            #         break
-            #     elif remaining < BUFFER_SIZE:
-            #         buff = remaining
-            #         remaining = 0
-            #     else:
-            #         raise
-            #     bytes_read = conn.recv(buff)
-            #     if not bytes_read:
-            #         print('breaking!')
-            #         break
-            #     f.write(bytes_read)
             f.close()
 
 def get_new_thread():
@@ -424,8 +426,10 @@ class Gui:
                                      text="stop")
         self.stop_button.pack(side="right", padx=20, ipadx=3, ipady=3)
 
+
     def start(self):
         self.window.mainloop()
+        broadcast(b'Server Closed')
         os._exit(0)
 
 
@@ -434,6 +438,7 @@ serverGui = Gui()
 
 def add_to_list(client_info):
     serverGui.list.insert(tkinter.END, str(client_info))
+    serverGui.list.see('end')
 
 
 def main():
