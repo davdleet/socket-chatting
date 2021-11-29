@@ -7,9 +7,7 @@ import threading
 from threading import Thread
 from tkinter import filedialog
 from tkinter import messagebox
-import tqdm
 import errno
-import re
 import json
 import time
 gui = None
@@ -41,14 +39,11 @@ def show_file(filename, file_id, conv_filesize, filesize):
     gui.make_download_button(filename, file_id, conv_filesize, filesize)
     gui.chat_log.insert(tkinter.END, '\n')
 
-def testfunc():
-    print("hi")
-
 def send_file():
     filepath = None
     try:
         filepath = filedialog.askopenfilename()
-        print('Selected: ', filepath)
+        print('Selected path: ', filepath)
         filename = filepath.split('/')[-1]
         print('filename: ', filename)
         filesize = os.path.getsize(filepath)
@@ -67,14 +62,14 @@ def send_file():
                 sock.sendall(bytes_read)
             f.close()
     except UnicodeEncodeError:
-        print("invalid upload title")
-        messagebox.showerror("error", "please make sure your files have english titles")
+        print("invalid upload title - try changing the title to alphanumeric")
+        # messagebox.showerror("error", "please make sure your files have english titles")
     except FileNotFoundError:
         if filepath == '':
             print('upload cancelled')
         else:
             print("File was not found")
-            messagebox.showerror("error", "File was not found")
+            #messagebox.showerror("error", "File was not found")
 
 def request_file(filename, file_id, file_size):
     print(f'requesting {filename} id: {file_id} size: {file_size}')
@@ -128,7 +123,7 @@ def receive_chat():
     global gui
     global chatting
     while not gui:
-        print('wait for gui')
+        #print('wait for gui')
         None
     time.sleep(1)
     print('receiving chat')
@@ -164,14 +159,14 @@ def receive_chat():
             else:
                 if usable_message == '':
                     return
-                print('usable message : ' + usable_message)
+                print('server message : ' + usable_message)
                 show_chat(usable_message + '\n')
     except (BrokenPipeError, ConnectionResetError) as e:
         print('connection broken')
         show_chat("Connection is broken. Please re-boot the program.")
     except Exception as e:
         print(e.with_traceback())
-        # show_chat("An error occurred.")
+        # show_chat("An error occurred.\n")
         # receive_chat()
 
 
@@ -196,7 +191,6 @@ def send_chat(*args):
             sock.close()
             gui.destroy()
             chatting = False
-            print('normal end')
             os._exit(0)
     except Exception as e:
         print(e)
@@ -259,7 +253,7 @@ def connect_to_server(HOST, PORT, password, username, input_token):
 
         #token reconnect if token is provided
         if input_token:
-            print(f'token is: {input_token}')
+            print(f'your token: {input_token}')
             sock.send(input_token.encode('ascii'))
             token_response = sock.recv(1024)
             decoded_token_response = token_response.decode('ascii')
@@ -273,7 +267,7 @@ def connect_to_server(HOST, PORT, password, username, input_token):
             else:
                 return 3
         else:
-            print('no token!')
+            print('no token available')
             sock.send(b'****************')
 
         # check password
@@ -294,7 +288,7 @@ def connect_to_server(HOST, PORT, password, username, input_token):
 
         token = sock.recv(1024)
         decoded_token = token.decode('ascii')
-        print(decoded_token)
+        print(f'received token from server: {decoded_token}')
         credential = {
             'token':decoded_token,
             'host':HOST,
@@ -307,12 +301,13 @@ def connect_to_server(HOST, PORT, password, username, input_token):
 
         t = Thread(target=chat)
         t.start()
-        print('all the way')
         return 0
     except socket.error as e:
         print(e)
     except KeyboardInterrupt as e:
         print("client closed by user")
+    except Exception as e:
+        print('error while connecting to server')
 
 def open_chat_gui():
     print("opening chat gui")
@@ -401,7 +396,7 @@ class JoinGui:
         result = connect_to_server(host, port, pw, usern, None)
         if result == 1:
             print("Your password was wrong")
-            messagebox.showerror("error", "Wrong server password!")
+            #messagebox.showerror("error", "Wrong server password!")
         elif result > 0:
             print("There was some error in connecting")
         elif result == 0:
