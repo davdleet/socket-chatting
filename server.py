@@ -354,47 +354,46 @@ class Gui:
         self.window.resizable(True, True)
         self.window.title("Socket Chatting Server")
 
-        self.title = tkinter.Label(self.window, bg='#252229', fg='white', font=("Lucida Grande", 25), text="Start a chatting Server",
-                              relief="solid")
+        self.title = tkinter.Label(self.window, bg='#252229', fg='white', font=("Arial", 25), text="Start a chatting Server")
         self.title.pack(pady=20)
 
-        self.label1 = Label(self.window, bg='#252229', fg='white', relief="solid")
+        self.label1 = Label(self.window, bg='#252229', fg='white')
         self.label1.pack(fill="both", padx=20)
 
-        self.server_ip = Label(self.label1, bg='#252229', fg='white', font=("Lucida Grande", 18), text="Server IP: ", relief="solid")
+        self.server_ip = Label(self.label1, bg='#252229', fg='white', font=("Arial", 18), text="Server IP: ")
         self.server_ip.pack(side="left")
 
-        self.server_ip_value = Label(self.label1, bg='#252229', fg='white', font=("Lucida Grande", 18), text=external_ip,
-                                relief="solid")
+        self.server_ip_value = Label(self.label1, bg='#252229', fg='white', font=("Arial", 18), text=external_ip,
+                        )
         self.server_ip_value.pack(side="left")
 
-        self.label2 = Label(self.window, bg='#252229', fg='white', relief="solid")
+        self.label2 = Label(self.window, bg='#252229', fg='white')
         self.label2.pack(fill="both", padx=20)
 
-        self.port = Label(self.label2, bg='#252229', fg='white', font=("Lucida Grande", 18), text="Port: ", relief="solid")
+        self.port = Label(self.label2, bg='#252229', fg='white', font=("Arial", 18), text="Port: ")
         self.port.pack(side="left")
 
-        self.port_value = Entry(self.label2, bg='#252229', fg='white', bd=0, font=("Lucida Grande", 18), text="Port: ")
+        self.port_value = Entry(self.label2, bg='#252229', fg='white', bd=2, font=("Arial", 18), text="Port: ")
         self.port_value.pack(side="left")
 
-        self.label3 = Label(self.window, bg='#252229', fg='white', relief="solid")
+        self.label3 = Label(self.window, bg='#252229', fg='white')
         self.label3.pack(fill="x", padx=20)
 
-        self.password = Label(self.label3, bg='#252229', fg='white', font=("Lucida Grande", 18), text="Password: ", relief="solid")
+        self.password = Label(self.label3, bg='#252229', fg='white', font=("Arial", 18), text="Password: ")
         self.password.pack(side="left")
 
-        self.password_value = Entry(self.label3, bg='#252229', fg='white', bd=0, font=("Lucida Grande", 18), text="Password: ")
+        self.password_value = Entry(self.label3, bg='#252229', fg='white', bd=2, font=("Arial", 18), text="Password: ")
         self.password_value.pack(side="left")
 
-        self.label4 = Label(self.window, bg='#252229', fg='white', relief="solid", anchor="w", font=("Lucida Grande", 18),
+        self.label4 = Label(self.window, bg='#252229', fg='white', anchor="w", font=("Arial", 18),
                     text="Connected Clients")
         self.label4.pack(fill="x", padx=20, pady=10)
 
-        self.label5 = Label(self.window, height=100, bg='#252229', fg='white', relief="solid")
+        self.label5 = Label(self.window, bg='#252229', fg='white')
         self.label5.pack(padx=20)
 
-        self.list = Text(self.label5, bg='#252229', fg='white', width=69, height=22, wrap=None, font=("TkFixedFont", 14),
-                    relief="solid")
+        self.list = Text(self.label5, bg='#252229', fg='white', height=20, wrap=None, font=("Fixedsys", 14),
+            )
         self.list.pack(side="left")
 
         self.top_row = "{:<43}".format("Address") + "{:<20}".format("Port") + "{:<30}".format("Username") + "\n\n"
@@ -405,14 +404,14 @@ class Gui:
 
         self.list.config(yscrollcommand=self.scroll.set)
 
-        self.label6 = tkinter.Label(self.window, height=80)
-        self.label6.pack(side="right", padx=20, pady=20, fill="x")
+        self.label6 = tkinter.Label(self.window)
+        self.label6.pack(side="right", padx=20, pady=20)
 
-        self.start_button = tkinter.Button(self.label6, font=("Lucida Grande", 18), command=start_threads, width=3, height=1,
+        self.start_button = tkinter.Button(self.label6, font=("Arial", 18), command=start_threads, width=3, height=1,
                                       text="start")
         self.start_button.pack(side="right", ipadx=3, ipady=3)
 
-        self.stop_button = tkinter.Button(self.label6, font=("Lucida Grande", 18), command=stop_server_button, width=3, height=1,
+        self.stop_button = tkinter.Button(self.label6, font=("Arial", 18), command=stop_server_button, width=3, height=1,
                                      text="stop")
         self.stop_button.pack(side="right", padx=20, ipadx=3, ipady=3)
 
