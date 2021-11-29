@@ -140,7 +140,7 @@ def receive_chat():
                 show_chat("The server is closed")
                 break
             if header == '[MSG]':
-                print(f'message from user {msg_body}')
+                print(f'message from user {msg_body}', end='')
                 show_chat(msg_body)
             elif header == '[FBC]':
                 split_body = msg_body.split(SEPARATOR)
@@ -207,18 +207,6 @@ def chat():
 # running on main thread splits from here
 def connect_to_server(HOST, PORT, password, username, input_token):
     global sock
-    # global HOST, PORT, password, username
-
-    # HOST = '221.155.194.15'
-    # PORT = '50007'
-    # password = '1234'
-    # username = 'temp'
-
-    # HOST = gui.server_ip_value.get()
-    # PORT = gui.port_value.get()
-    # password = gui.password_value.get()
-    # username = gui.username_value.get()
-
     global chatting
     try:
 
