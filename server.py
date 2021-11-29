@@ -40,11 +40,6 @@ file_id = 1
 user_tokens = {}
 online_tokens =[]
 
-def join_threads():
-    for thread in threads:
-        print("joining..")
-        thread.join()
-
 def setup():
     global sock
     global HOST
@@ -56,8 +51,6 @@ def setup():
         print("The server password is: " + str(server_pw))
         if PORT == "":
             raise Exception("Enter a valid port number")
-        # if PORT is None:
-        # raise Exception("Enter a valid port number")
         for res in socket.getaddrinfo(HOST, PORT, socket.AF_UNSPEC, socket.SOCK_STREAM, 0, socket.AI_PASSIVE):
             af, socktype, proto, cannonname, sa = res
             try:
@@ -77,7 +70,7 @@ def setup():
             break
         return sock
     except Exception as e:
-        # messagebox.showerror("Error!", e)
+        messagebox.showerror("Error!", e)
         sys.exit(1)
 
 
@@ -102,11 +95,11 @@ def listen_loop():
             decoded_conn_token = conn_token.decode('ascii')
 
             if decoded_conn_token == '****************':
-                print('no token provided')
+                print(f'no token provided from {addr}')
             else:
                 if decoded_conn_token in user_tokens.keys():
                     if decoded_conn_token in online_tokens:
-                        print('this user is already online!')
+                        print('duplicate token was provided')
                         conn.send(b'User Already Connected')
                         continue
                     conn_username = user_tokens[decoded_conn_token]
@@ -129,18 +122,17 @@ def listen_loop():
             # password verification
             entered_pw = conn.recv(1024)
             decoded_entered_pw = entered_pw.decode('ascii')
-            print("decoded pw: " + str(decoded_entered_pw))
-            print("server pw: " + str(server_pw))
             if str(decoded_entered_pw) != str(server_pw):
                 pw_msg = 'wrong password!'
                 encoded_pw_msg = pw_msg.encode('ascii')
                 conn.send(encoded_pw_msg)
-                print('wrong password!')
+                print(f'password authentication for {addr} failed')
                 continue
             else:
                 pw_msg = 'connection successful'
                 encoded_pw_msg = pw_msg.encode('ascii')
                 conn.send(encoded_pw_msg)
+                print(f'password authentication for {addr} was successful')
 
             # get a username from the user
             username = conn.recv(1024)
@@ -163,8 +155,8 @@ def listen_loop():
             rcv_thread = Thread(target=receiver, args=(conn, addr, decoded_username, client_token, 0))
             rcv_thread.start()
     except ConnectionAbortedError as e:
+        messagebox.showinfo('info', 'Server closed')
         print("Server closed by admin")
-        #broadcast(b'The server was closed by the admin')
         global stop_server
         stop_server = True
     except ConnectionResetError as e:
@@ -175,7 +167,8 @@ def generate_token():
     return token
 
 def start_socket():
-    print("server open!")
+    messagebox.showinfo('info', 'Server is opened')
+    print("server opened!")
     global started
     global stop_server
     started = True
@@ -208,7 +201,6 @@ def receiver(conn, addr, username, token, count):
     global file_id
     if count == 0:
         None
-    print(f"receiving from {addr}...")
     try:
         while started:
             message = conn.recv(1024)
@@ -306,7 +298,6 @@ def recv_file(conn, received):
             os.makedirs('files')
         except OSError as e:
             if e.errno != errno.EEXIST:
-                print('oserror!')
                 raise
     if filesize == 0:
         f = open('files/'+str(file_id)+'-'+filename, "wb")
