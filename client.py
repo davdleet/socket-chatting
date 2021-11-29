@@ -383,15 +383,10 @@ class JoinGui:
         self.reset_button.pack(side="right", padx=20, ipadx=3, ipady=3)
 
     def press_start_button(self):
-        # host = self.server_ip_value.get()
-        # port = self.port_value.get()
-        # pw = self.password_value.get()
-        # usern = self.username_value.get()
-
-        host = '221.155.194.15'
-        port = '50007'
-        pw = '1234'
-        usern = 'temp'
+        host = self.server_ip_value.get()
+        port = self.port_value.get()
+        pw = self.password_value.get()
+        usern = self.username_value.get()
 
         result = connect_to_server(host, port, pw, usern, None)
         if result == 1:
