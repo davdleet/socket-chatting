@@ -314,58 +314,58 @@ class JoinGui:
         self.window.title("Socket Chatting Client")
         self.title = tkinter.Label(self.window, bg='#252229', fg='white', font=("Lucida Grande", 25),
                                    text="Join a chatting server!",
-                                   relief="solid")
+                            )
         self.title.pack(pady=20)
 
-        self.label1 = Label(self.window, bg='#252229', fg='white', relief="solid")
+        self.label1 = Label(self.window, bg='#252229', fg='white')
         self.label1.pack(fill="both", padx=20)
 
         self.server_ip = Label(self.label1, bg='#252229', fg='white', font=("Lucida Grande", 18), text="Server IP: ",
-                               relief="solid")
+                        )
         self.server_ip.pack(side="left")
 
-        self.server_ip_value = Entry(self.label1, bg='#252229', fg='white', bd=0, font=("Lucida Grande", 18))
+        self.server_ip_value = Entry(self.label1, bg='#252229', fg='white', font=("Lucida Grande", 18))
         self.server_ip_value.pack(side="right")
 
-        self.label2 = Label(self.window, bg='#252229', fg='white', relief="solid")
+        self.label2 = Label(self.window, bg='#252229', fg='white')
         self.label2.pack(fill="both", padx=20)
 
         self.port = Label(self.label2, bg='#252229', fg='white', font=("Lucida Grande", 18), text="Port: ",
-                          relief="solid")
+                    )
         self.port.pack(side="left")
 
-        self.port_value = Entry(self.label2, bg='#252229', fg='white', bd=0, font=("Lucida Grande", 18))
+        self.port_value = Entry(self.label2, bg='#252229', fg='white', font=("Lucida Grande", 18))
         self.port_value.pack(side="right")
 
-        self.label3 = Label(self.window, bg='#252229', fg='white', relief="solid")
+        self.label3 = Label(self.window, bg='#252229', fg='white')
         self.label3.pack(fill="x", padx=20)
 
         self.password = Label(self.label3, bg='#252229', fg='white', font=("Lucida Grande", 18), text="Password: ",
-                              relief="solid")
+                        )
         self.password.pack(side="left")
 
-        self.password_value = Entry(self.label3, bg='#252229', fg='white', bd=0, font=("Lucida Grande", 18))
+        self.password_value = Entry(self.label3, bg='#252229', fg='white', font=("Lucida Grande", 18))
         self.password_value.pack(side="right")
 
-        self.label4 = Label(self.window, bg='#252229', fg='white', relief="solid")
+        self.label4 = Label(self.window, bg='#252229', fg='white')
         self.label4.pack(fill="x", padx=20)
 
         self.username = Label(self.label4, bg='#252229', fg='white', font=("Lucida Grande", 18), text="Username: ",
-                              relief="solid")
+                        )
         self.username.pack(side="left")
 
-        self.username_value = Entry(self.label4, bg='#252229', fg='white', bd=0, font=("Lucida Grande", 18))
+        self.username_value = Entry(self.label4, bg='#252229', fg='white', font=("Lucida Grande", 18))
         self.username_value.pack(side="right")
 
         self.label5 = tkinter.Label(self.window, height=80)
         self.label5.pack(side="right", padx=20, pady=20, fill="x")
 
-        self.start_button = tkinter.Button(self.label5, font=("Lucida Grande", 18), command=self.press_start_button,
-                                           width=3, height=1,
+        self.start_button = tkinter.Button(self.label5, font=("Lucida Grande", 13), command=self.press_start_button,
+                                           width=4, height=1,
                                            text="Join")
         self.start_button.pack(side="right", ipadx=3, ipady=3)
 
-        self.reset_button = tkinter.Button(self.label5, font=("Lucida Grande", 18), command=self.reset_input, width=3,
+        self.reset_button = tkinter.Button(self.label5, font=("Lucida Grande", 13), command=self.reset_input, width=4,
                                            height=1,
                                            text="Reset")
         self.reset_button.pack(side="right", padx=20, ipadx=3, ipady=3)
@@ -414,15 +414,15 @@ class ChatGui:
         self.window.title("Socket Chatting Client")
         self.title = tkinter.Label(self.window, bg='#252229', fg='white', font=("Lucida Grande", 25),
                                    text="Chatting Room",
-                                   relief="solid")
+                            )
         self.title.pack(pady=20)
 
-        self.label1 = Label(self.window, height=100, bg='#252229', fg='white', relief="solid")
+        self.label1 = Label(self.window, height=100, bg='#252229', fg='white')
         self.label1.pack(padx=20)
 
-        self.chat_log = Text(self.label1, bg='#252229', fg='white', width=62, height=25, wrap=None,
-                             font=("TkFixedFont", 14),
-                             relief="solid")
+        self.chat_log = Text(self.label1, bg='#252229', fg='white', width=72, height=25, wrap=None,
+                             font=("Fixedsys", 14),
+                        )
         self.chat_log.pack(side="left")
 
         self.scroll = Scrollbar(self.label1, orient="vertical", command=self.chat_log.yview)
@@ -430,20 +430,20 @@ class ChatGui:
 
         self.chat_log.config(yscrollcommand=self.scroll.set)
 
-        self.label2 = Label(self.window, width=100, height=100, bg='#252229', fg='white', relief="solid")
+        self.label2 = Label(self.window, width=100, height=100, bg='#252229', fg='white')
         self.label2.pack(padx=25, pady=20, fill='both')
 
-        self.chat_value = Entry(self.label2, bg='#252229', fg='white', bd=0, font=("Lucida Grande", 18))
+        self.chat_value = Entry(self.label2, bg='#252229', fg='white', font=("Lucida Grande", 18))
         self.chat_value.pack(side="left", padx= 10, ipadx=100, ipady=40)
 
         self.chat_value.bind('<Return>', send_chat)
 
-        self.send_button = Button(self.label2, font=("Lucida Grande", 18), height=100, width=6, command=send_chat,
+        self.send_button = Button(self.label2, font=("Lucida Grande", 13), height=100, width=6, command=send_chat,
                                   text='Send')
-        self.send_button.pack(side="right")
+        self.send_button.pack(side="right", pady = 35)
 
-        self.file_button = Button(self.label2, font=("Lucida Grande", 18), height=100, width=6, command=send_file, text='Attach')
-        self.file_button.pack(side="right")
+        self.file_button = Button(self.label2, font=("Lucida Grande", 13), height=100, width=6, command=send_file, text='Attach')
+        self.file_button.pack(side="right", pady=35)
 
 
         self.make_button = tkinter.BooleanVar(value=False)
