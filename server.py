@@ -250,8 +250,7 @@ def receiver(conn, addr, username, token, count):
                 reencoded_message = merged_message.encode('ascii')
                 broadcast(reencoded_message)
                 broadcast_file(recv_file_name, current_file_id, converted_file_size, recv_file_size)
-
-    except (ConnectionResetError, BrokenPipeError) as e:
+    except (ConnectionResetError, BrokenPipeError, TimeoutError) as e:
         if conn in clients:
             clients.remove(conn)
         if token in online_tokens:
