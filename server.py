@@ -70,7 +70,7 @@ def setup():
             break
         return sock
     except Exception as e:
-        messagebox.showerror("Error!", e)
+        #messagebox.showerror("Error!", e)
         sys.exit(1)
 
 
@@ -155,7 +155,7 @@ def listen_loop():
             rcv_thread = Thread(target=receiver, args=(conn, addr, decoded_username, client_token, 0))
             rcv_thread.start()
     except ConnectionAbortedError as e:
-        messagebox.showinfo('info', 'Server closed')
+        #messagebox.showinfo('info', 'Server closed')
         print("Server closed by admin")
         global stop_server
         stop_server = True
@@ -167,7 +167,7 @@ def generate_token():
     return token
 
 def start_socket():
-    messagebox.showinfo('info', 'Server is opened')
+    #messagebox.showinfo('info', 'Server is opened')
     print("server opened!")
     global started
     global stop_server
@@ -336,7 +336,7 @@ def start_threads():
     global started
     global listen_thread
     if started:
-        messagebox.showerror("error", "Server is already running!")
+        #messagebox.showerror("error", "Server is already running!")
         return
     listen_thread = get_new_thread()
     listen_thread.start()
