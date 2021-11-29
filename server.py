@@ -12,9 +12,7 @@ import string
 from tkinter import *
 from tkinter import messagebox
 from threading import Thread
-import tqdm
 import math
-import copy
 import errno
 from tkinter import filedialog
 BUFFER_SIZE = 4096
