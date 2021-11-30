@@ -49,7 +49,7 @@ def send_file():
         filesize = os.path.getsize(filepath)
 
         fup = f'[FUP]{filename}{SEPARATOR}{filesize}[END]'
-        filler_len = 1024 - len(fup)
+        filler_len = 4096 - len(fup)
         filler = ' ' * filler_len
         fup = fup + filler
         sock.sendall(fup.encode('ascii'))
@@ -130,7 +130,8 @@ def receive_chat():
     recv_msg = None
     try:
         while chatting:
-            recv_msg = sock.recv(4096)
+            # recv_msg = sock.recv(4096)
+            recv_msg = receive_bytes(sock, 4096)
             decoded_recv_msg = recv_msg.decode('ascii')
             decoded_recv_msg = decoded_recv_msg.rstrip()
             usable_message = decoded_recv_msg.replace('[END]', '')
@@ -182,7 +183,8 @@ def send_chat(*args):
         header = "[MSG]"
         merged_msg = header + send_msg + '[END]'
         encoded_send_msg = merged_msg.encode('ascii')
-        sock.send(encoded_send_msg)
+        # sock.send(encoded_send_msg)
+        send_bytes(sock, encoded_send_msg, 4096)
         print('message sent!')
         if send_msg == '/quit\n':
             if os.path.exists('credential.json'):
@@ -197,7 +199,33 @@ def send_chat(*args):
         show_chat("An error occurred. Please restart the program.")
         os._exit(0)
 
+def b_string_fill(bstring, size):
+    fill_size = size - len(bstring)
+    fill = ' ' * fill_size
+    result = bstring + fill
+    return result
 
+def b_string_check(bstring, size):
+    decoded_bstring = bstring.decode('ascii')
+    if len(decoded_bstring) == size:
+        return True
+    else:
+        return False
+
+def receive_bytes(s, length):
+    result = b''
+    while not b_string_check(result, length):
+        result = result + s.recv(length - result)
+    return result
+
+def send_bytes(s, bstring, length):
+    s.send(b_string_fill(bstring, length))
+
+def receive_bytes(sock, length):
+    result = b''
+    while not b_string_check(result, length):
+        result = result + sock.recv(length - result)
+    return result
 
 # running on separate thread from main (gui) thread
 def chat():
@@ -243,14 +271,14 @@ def connect_to_server(HOST, PORT, password, username, input_token):
         if input_token:
             print(f'your token: {input_token}')
             sock.send(input_token.encode('ascii'))
-            token_response = sock.recv(1024)
+            token_response = sock.recv(3)
             decoded_token_response = token_response.decode('ascii')
-            if decoded_token_response == 'Connection Successful':
+            if decoded_token_response == 'SCS':
                 chatting = True
                 t = Thread(target=chat)
                 t.start()
                 return 0
-            elif decoded_token_response == 'User Already Connected':
+            elif decoded_token_response == 'DUP':
                 return 5
             else:
                 return 3
@@ -260,10 +288,11 @@ def connect_to_server(HOST, PORT, password, username, input_token):
 
         # check password
         encoded_password = password.encode('ascii')
-        sock.send(encoded_password)
-        pw_check_msg = sock.recv(1024)
+        #sock.send(encoded_password)
+        send_bytes(sock, encoded_password, 1024)
+        pw_check_msg = sock.recv(3)
         decoded_pw_check_msg = pw_check_msg.decode('ascii')
-        if decoded_pw_check_msg == 'connection successful':
+        if decoded_pw_check_msg == 'SCS':
             pw_verified = True
         if not pw_verified:
             print(decoded_pw_check_msg)
@@ -272,9 +301,9 @@ def connect_to_server(HOST, PORT, password, username, input_token):
 
         # send username to server
         encoded_username = username.encode('ascii')
-        sock.send(encoded_username)
-
-        token = sock.recv(1024)
+        #sock.send(encoded_username)
+        send_bytes(sock, encoded_username, 1024)
+        token = sock.recv(16)
         decoded_token = token.decode('ascii')
         print(f'received token from server: {decoded_token}')
         credential = {

@@ -46,7 +46,8 @@ def setup():
     try:
         PORT = serverGui.port_value.get()
         server_pw = str(serverGui.password_value.get())
-        print("The server password is: " + str(server_pw))
+        server_pw = server_pw + (' ' * (1024 - len(server_pw)))
+        print("The server password is: " + str(server_pw.rstrip()))
         if PORT == "":
             raise Exception("Enter a valid port number")
         for res in socket.getaddrinfo(HOST, PORT, socket.AF_UNSPEC, socket.SOCK_STREAM, 0, socket.AI_PASSIVE):
@@ -81,6 +82,28 @@ def start_server():
     start_socket()
     return
 
+def b_string_fill(bstring, size):
+    fill_size = size - len(bstring)
+    fill = ' ' * fill_size
+    result = bstring + fill
+    return result
+
+def b_string_check(bstring, size):
+    decoded_bstring = bstring.decode('ascii')
+    if len(decoded_bstring) == size:
+        return True
+    else:
+        return False
+
+def receive_bytes(s, length):
+    result = b''
+    while not b_string_check(result, length):
+        result = result + s.recv(length - result)
+    return result
+
+def send_bytes(s, bstring, length):
+    s.send(b_string_fill(bstring, length))
+
 def listen_loop():
     try:
         while True:
@@ -88,7 +111,7 @@ def listen_loop():
             conn, addr = sock.accept()
             print('connected by', addr)
 
-            #check for tokens
+            # size is 16
             conn_token = conn.recv(16)
             decoded_conn_token = conn_token.decode('ascii')
 
@@ -98,11 +121,11 @@ def listen_loop():
                 if decoded_conn_token in user_tokens.keys():
                     if decoded_conn_token in online_tokens:
                         print('duplicate token was provided')
-                        conn.send(b'User Already Connected')
+                        conn.send(b'DUP')
                         continue
                     conn_username = user_tokens[decoded_conn_token]
                     print(f'{conn_username}:{decoded_conn_token} reconnected with credential token')
-                    conn.send(b'Connection Successful')
+                    conn.send(b'SCS')
                     clients.append(conn)
                     bc_msg = f'{conn_username} reconnected\n'
                     broadcast(bc_msg.encode('ascii'))
@@ -113,27 +136,30 @@ def listen_loop():
                 else:
                     print('invalid token provided')
                     print(decoded_conn_token)
-                    conn.send(b'Invalid Token')
+                    conn.send(b'INV')
                     continue
 
 
             # password verification
-            entered_pw = conn.recv(1024)
+            entered_pw = receive_bytes(sock, 1024)
+            #entered_pw = sock.recv(1024)
             decoded_entered_pw = entered_pw.decode('ascii')
             if str(decoded_entered_pw) != str(server_pw):
-                pw_msg = 'wrong password!'
+                pw_msg = 'WPW'
                 encoded_pw_msg = pw_msg.encode('ascii')
                 conn.send(encoded_pw_msg)
                 print(f'password authentication for {addr} failed')
                 continue
             else:
-                pw_msg = 'connection successful'
+                pw_msg = 'SCS'
                 encoded_pw_msg = pw_msg.encode('ascii')
                 conn.send(encoded_pw_msg)
                 print(f'password authentication for {addr} was successful')
 
             # get a username from the user
-            username = conn.recv(1024)
+            username = receive_bytes(sock, 1024)
+            # username = sock.recv(1024)
+            username = username.rstrip()
             decoded_username = username.decode('ascii')
             list_entry = f"{addr[0] : <40}{addr[1] : <19}{decoded_username : <20}\n"
             serverGui.list.insert(END, list_entry)
@@ -201,7 +227,8 @@ def receiver(conn, addr, username, token, count):
         None
     try:
         while started:
-            message = conn.recv(1024)
+            message = receive_bytes(sock, 4096)
+            # message = sock.recv(1024)
             decoded_message = message.decode('ascii')
             # usable_message = decoded_message.replace('[END]', '')
             decoded_message = decoded_message.rstrip()
