@@ -136,6 +136,7 @@ def receive_chat():
             decoded_recv_msg = decoded_recv_msg.rstrip()
             usable_message = decoded_recv_msg.replace('[END]', '')
             header = usable_message[0:5]
+            print(f"header was: {header}")
             msg_body = usable_message[5:]
             if recv_msg == b'Server Closed':
                 show_chat("The server is closed")
@@ -201,13 +202,12 @@ def send_chat(*args):
 
 def b_string_fill(bstring, size):
     fill_size = size - len(bstring)
-    fill = ' ' * fill_size
+    fill = b' ' * fill_size
     result = bstring + fill
     return result
 
 def b_string_check(bstring, size):
-    decoded_bstring = bstring.decode('ascii')
-    if len(decoded_bstring) == size:
+    if len(bstring) == size:
         return True
     else:
         return False
@@ -215,17 +215,12 @@ def b_string_check(bstring, size):
 def receive_bytes(s, length):
     result = b''
     while not b_string_check(result, length):
-        result = result + s.recv(length - result)
+        result = result + s.recv(length - len(result))
     return result
 
 def send_bytes(s, bstring, length):
     s.send(b_string_fill(bstring, length))
 
-def receive_bytes(sock, length):
-    result = b''
-    while not b_string_check(result, length):
-        result = result + sock.recv(length - result)
-    return result
 
 # running on separate thread from main (gui) thread
 def chat():
@@ -244,6 +239,7 @@ def connect_to_server(HOST, PORT, password, username, input_token):
             try:
                 sock = socket.socket(af, socktype, proto)
             except OSError as msg:
+                print("OS Error 1")
                 global gui
                 sock = None
                 continue
@@ -251,6 +247,7 @@ def connect_to_server(HOST, PORT, password, username, input_token):
             try:
                 sock.connect(sa)
             except OSError as msg:
+                print("OS Error 2")
                 sock.close()
                 sock = None
                 continue
@@ -262,6 +259,7 @@ def connect_to_server(HOST, PORT, password, username, input_token):
         # If sock is still None after for loop, connection to server failed
         if sock is None:
             #messagebox.showerror('error', 'Error opening socket')
+            print("Socket is none")
             return 2
 
         # after successfully connecting to the server socket
@@ -325,6 +323,7 @@ def connect_to_server(HOST, PORT, password, username, input_token):
         print("client closed by user")
     except Exception as e:
         print('error while connecting to server')
+        print(e.with_traceback())
 
 def open_chat_gui():
     print("opening chat gui")
@@ -409,8 +408,10 @@ class JoinGui:
         if result == 1:
             print("Your password was wrong")
             #messagebox.showerror("error", "Wrong server password!")
-        elif result > 0:
-            print("There was some error in connecting")
+        elif result == 5:
+            print("This token is already online")
+        elif result == 3:
+            print("This token was invalid")
         elif result == 0:
             print("connection was successful")
             self.window.destroy()
