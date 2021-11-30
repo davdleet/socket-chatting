@@ -10,6 +10,7 @@ from tkinter import messagebox
 import errno
 import json
 import time
+import math
 gui = None
 sock = None
 threads = []
@@ -178,7 +179,11 @@ def send_chat(*args):
     global chatting
     global sock
     try:
-        send_msg = gui.chat_value.get() + '\n'
+
+        send_msg = gui.chat_value.get()
+        if len(send_msg) >= 4095:
+            send_msg = send_msg[:4095]
+        send_msg = send_msg + '\n'
 
         gui.chat_value.delete(0, tkinter.END)
         header = "[MSG]"
