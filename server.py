@@ -238,7 +238,7 @@ def receiver(conn, addr, username, token, count):
             received_body = usable_message[5:]
             if received_header == "[MSG]":
                 merged_message = ('[MSG]' + str(username) + ' : ' + received_body + '[END]')
-                print(f'user message - {username} : {received_body}')
+                print(f'user message - {username} : {received_body}', end='')
                 if received_body == '/quit\n':
                     if conn in clients:
                         clients.remove(conn)
