@@ -84,7 +84,7 @@ def start_server():
 
 def b_string_fill(bstring, size):
     fill_size = size - len(bstring)
-    fill = ' ' * fill_size
+    fill = b' ' * fill_size
     result = bstring + fill
     return result
 
@@ -98,7 +98,7 @@ def b_string_check(bstring, size):
 def receive_bytes(s, length):
     result = b''
     while not b_string_check(result, length):
-        result = result + s.recv(length - result)
+        result = result + s.recv(length - len(result))
     return result
 
 def send_bytes(s, bstring, length):
@@ -141,8 +141,8 @@ def listen_loop():
 
 
             # password verification
-            entered_pw = receive_bytes(sock, 1024)
-            #entered_pw = sock.recv(1024)
+            entered_pw = receive_bytes(conn, 1024)
+            #entered_pw = conn.recv(1024)
             decoded_entered_pw = entered_pw.decode('ascii')
             if str(decoded_entered_pw) != str(server_pw):
                 pw_msg = 'WPW'
@@ -157,8 +157,8 @@ def listen_loop():
                 print(f'password authentication for {addr} was successful')
 
             # get a username from the user
-            username = receive_bytes(sock, 1024)
-            # username = sock.recv(1024)
+            username = receive_bytes(conn, 1024)
+            # username = conn.recv(1024)
             username = username.rstrip()
             decoded_username = username.decode('ascii')
             list_entry = f"{addr[0] : <40}{addr[1] : <19}{decoded_username : <20}\n"
@@ -227,8 +227,8 @@ def receiver(conn, addr, username, token, count):
         None
     try:
         while started:
-            message = receive_bytes(sock, 4096)
-            # message = sock.recv(1024)
+            message = receive_bytes(conn, 4096)
+            # message = conn.recv(1024)
             decoded_message = message.decode('ascii')
             # usable_message = decoded_message.replace('[END]', '')
             decoded_message = decoded_message.rstrip()
@@ -291,7 +291,8 @@ def receiver(conn, addr, username, token, count):
 
 def broadcast(message):
     for client in clients:
-        client.send(message)
+        send_bytes(client, message, 4096)
+        # client.send(message)
 
 def broadcast_file(filename, current_file_id, conv_filesize, filesize):
     msg = '[FBC]' +str(filename) + SEPARATOR +str(current_file_id)+SEPARATOR+str(conv_filesize) + SEPARATOR +str(filesize)+'[END]'
