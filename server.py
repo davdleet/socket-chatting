@@ -228,7 +228,7 @@ def receiver(conn, addr, username, token, count):
     try:
         while started:
             message = receive_bytes(conn, 4096)
-            # message = conn.recv(1024)
+            # message = conn.recv(4096)
             decoded_message = message.decode('ascii')
             # usable_message = decoded_message.replace('[END]', '')
             decoded_message = decoded_message.rstrip()
@@ -298,7 +298,8 @@ def broadcast_file(filename, current_file_id, conv_filesize, filesize):
     msg = '[FBC]' +str(filename) + SEPARATOR +str(current_file_id)+SEPARATOR+str(conv_filesize) + SEPARATOR +str(filesize)+'[END]'
     encoded_msg = msg.encode('ascii')
     for client in clients:
-        client.send(encoded_msg)
+        send_bytes(client, encoded_msg, 4096)
+        #client.send(encoded_msg)
 
 
 def send_file(filename, conn):
